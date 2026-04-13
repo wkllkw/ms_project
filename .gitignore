@@ -1,0 +1,104 @@
+# ===========================================
+# Go Backend (ms_project/)
+# ===========================================
+
+# Docker data directories - 数据库持久化数据
+ms_project/data/
+
+# Logs - 日志文件
+ms_project/logs/
+*.log
+
+# Build outputs - 编译输出
+ms_project/**/target/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Uploaded files - 用户上传文件
+ms_project/project-api/uploads/
+
+# Temporary directories - 临时目录
+ms_project/project-user/D__/
+
+# Go workspace files (可选保留)
+# go.work
+# go.work.sum
+
+# Test coverage
+*.out
+coverage.txt
+
+# ===========================================
+# Vue Frontend (msProject/)
+# ===========================================
+
+# Dependencies
+msProject/node_modules/
+
+# Build output
+msProject/dist/
+
+# npm/yarn debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+msProject/.idea
+msProject/.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===========================================
+# General
+# ===========================================
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.local
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# ===========================================
+# Database files (should not be committed)
+# ===========================================
+*.sql.bak
+*.sql.gz
+
+# ===========================================
+# Documentation (optional - 如果不需要提交)
+# ===========================================
+# *.md
+# !README.md
