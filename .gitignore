@@ -1,16 +1,16 @@
 # ===========================================
-# Go Backend (ms_project/)
+# Go Backend
 # ===========================================
 
 # Docker data directories - 数据库持久化数据
-ms_project/data/
+backend/data/
 
 # Logs - 日志文件
-ms_project/logs/
+backend/logs/
 *.log
 
 # Build outputs - 编译输出
-ms_project/**/target/
+backend/**/target/
 *.exe
 *.exe~
 *.dll
@@ -18,10 +18,10 @@ ms_project/**/target/
 *.dylib
 
 # Uploaded files - 用户上传文件
-ms_project/project-api/uploads/
+backend/api/uploads/
 
 # Temporary directories - 临时目录
-ms_project/project-user/D__/
+backend/user/D__/
 
 # Go workspace files (可选保留)
 # go.work
@@ -32,14 +32,14 @@ ms_project/project-user/D__/
 coverage.txt
 
 # ===========================================
-# Vue Frontend (msProject/)
+# Vue Frontend
 # ===========================================
 
 # Dependencies
-msProject/node_modules/
+frontend/node_modules/
 
 # Build output
-msProject/dist/
+frontend/dist/
 
 # npm/yarn debug logs
 npm-debug.log*
@@ -47,13 +47,21 @@ yarn-debug.log*
 yarn-error.log*
 
 # Editor directories and files
-msProject/.idea
-msProject/.vscode
+frontend/.idea
+frontend/.vscode
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# ===========================================
+# Database
+# ===========================================
+
+# Database files (should not be committed)
+database/*.sql.bak
+database/*.sql.gz
 
 # ===========================================
 # General
@@ -90,15 +98,3 @@ Desktop.ini
 *.temp
 *.bak
 *.cache
-
-# ===========================================
-# Database files (should not be committed)
-# ===========================================
-*.sql.bak
-*.sql.gz
-
-# ===========================================
-# Documentation (optional - 如果不需要提交)
-# ===========================================
-# *.md
-# !README.md
