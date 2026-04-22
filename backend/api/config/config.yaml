@@ -1,0 +1,36 @@
+server:
+  name: "menu-api"
+  addr: "127.0.0.1:18000"
+zap:
+  debugFileName: "./logs/debug/debug.log"
+  infoFileName: "./logs/info/info.log"
+  warnFileName: "./logs/error/error.log"
+  maxSize: 500
+  maxAge: 28
+  MaxBackups: 3
+etcd:
+  addrs:
+    - "127.0.0.1:2379"
+rpc:
+  userAddr: "127.0.0.1:18881"
+  projectAddr: "127.0.0.1:18882"
+mysql:
+  username: root
+  password: root
+  host: 127.0.0.1
+  port: 13306
+  db: msproject
+
+# Redis 缓存配置（可选）
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+# 邮件通知配置（可选）
+mail:
+  host: "smtp.example.com"
+  port: 465
+  user: "noreply@example.com"
+  password: "your_smtp_password"
+  from: "MS Project 协作平台"

@@ -1,0 +1,497 @@
+basePath: /
+definitions:
+  common.Result:
+    properties:
+      code:
+        type: integer
+      data: {}
+      msg:
+        type: string
+    type: object
+  user.LoginReq:
+    properties:
+      account:
+        type: string
+      password:
+        type: string
+    type: object
+host: localhost:18000
+info:
+  contact:
+    email: support@example.com
+    name: MS Project API Support
+  description: |-
+    基于 Go + Gin + Vue 的企业级任务协作系统后端API<br/>
+    功能模块: 项目管理 | 任务看板 | 甘特图 | 日程安排 | 文件管理 | 成员权限 | 实时通知
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: MS Project 任务协作平台 API
+  version: "1.0"
+paths:
+  /file/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传文件到项目，支持图片/文档/视频等类型
+      parameters:
+      - description: 要上传的文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 项目加密ID
+        in: formData
+        name: projectCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回文件信息(code/title/fileType/fileSize/fileUrl)
+          schema:
+            $ref: '#/definitions/common.Result'
+        "400":
+          description: 参数错误或文件过大
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 上传文件
+      tags:
+      - file
+  /project/analysis:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 获取项目的任务统计、进度分析、成员工作量等数据
+      parameters:
+      - description: 项目加密ID
+        in: formData
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回项目统计数据
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 项目数据分析
+      tags:
+      - project
+  /project/edit:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 修改项目名称、描述、封面等信息
+      parameters:
+      - description: 项目加密ID
+        in: formData
+        name: code
+        required: true
+        type: string
+      - description: 项目名称
+        in: formData
+        name: name
+        type: string
+      - description: 项目描述
+        in: formData
+        name: description
+        type: string
+      - description: 项目封面URL
+        in: formData
+        name: cover
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回编辑后的项目数据
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 编辑项目
+      tags:
+      - project
+  /project/index:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 查询当前用户可访问的项目列表（支持分页和关键词搜索）
+      parameters:
+      - description: 项目名称搜索
+        in: formData
+        name: keyword
+        type: string
+      - default: 1
+        description: 页码
+        in: formData
+        name: page
+        type: integer
+      - default: 10
+        description: 每页条数
+        in: formData
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回项目列表和分页信息
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 项目列表
+      tags:
+      - project
+  /project/read:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 获取项目完整信息（含成员列表、统计等）
+      parameters:
+      - description: 项目加密ID
+        in: formData
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回项目完整数据
+          schema:
+            $ref: '#/definitions/common.Result'
+        "404":
+          description: 项目不存在
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 项目详情
+      tags:
+      - project
+  /project/save:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 创建新的协作项目
+      parameters:
+      - description: 项目名称
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: 项目描述
+        in: formData
+        name: description
+        type: string
+      - description: 项目封面URL
+        in: formData
+        name: cover
+        type: string
+      - description: 项目代号前缀
+        in: formData
+        name: prefix
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回新项目加密ID
+          schema:
+            $ref: '#/definitions/common.Result'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建项目
+      tags:
+      - project
+  /project/task:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 根据项目编码分页查询任务列表，支持按状态/阶段/优先级等条件筛选
+      parameters:
+      - description: 项目加密ID
+        in: formData
+        name: projectCode
+        required: true
+        type: string
+      - description: 是否已删除(0/1)
+        in: formData
+        name: deleted
+        type: string
+      - description: 看板阶段编码
+        in: formData
+        name: stageCode
+        type: string
+      - description: 任务状态
+        in: formData
+        name: status
+        type: integer
+      - description: 关键词搜索
+        in: formData
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回任务列表和分页信息
+          schema:
+            $ref: '#/definitions/common.Result'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 任务列表查询
+      tags:
+      - task
+  /project/task/createComment:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 在指定任务下添加评论
+      parameters:
+      - description: 任务加密ID
+        in: formData
+        name: code
+        required: true
+        type: string
+      - description: 评论内容
+        in: formData
+        name: content
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回新评论ID
+          schema:
+            $ref: '#/definitions/common.Result'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建任务评论
+      tags:
+      - task
+  /project/task/edit:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 修改已有任务的名称、描述、优先级、截止时间等信息
+      parameters:
+      - description: 任务加密ID
+        in: formData
+        name: code
+        required: true
+        type: string
+      - description: 任务名称
+        in: formData
+        name: name
+        type: string
+      - description: 任务描述
+        in: formData
+        name: description
+        type: string
+      - description: 优先级(0-3)
+        in: formData
+        name: priority
+        type: integer
+      - description: 截止时间戳(毫秒)
+        in: formData
+        name: end_time
+        type: integer
+      - description: 执行者账号
+        in: formData
+        name: assign_to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回编辑后的任务数据
+          schema:
+            $ref: '#/definitions/common.Result'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 编辑任务
+      tags:
+      - task
+  /project/task/read:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 获取单个任务的完整详情（含评论、工时记录、附件等）
+      parameters:
+      - description: 任务加密ID
+        in: formData
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回任务完整数据
+          schema:
+            $ref: '#/definitions/common.Result'
+        "404":
+          description: 任务不存在
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 任务详情
+      tags:
+      - task
+  /project/task/save:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: 在指定项目中创建新任务，支持设置优先级/截止时间/执行者等
+      parameters:
+      - description: 任务名称
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: 项目加密ID
+        in: formData
+        name: projectCode
+        required: true
+        type: string
+      - description: 任务描述
+        in: formData
+        name: description
+        type: string
+      - description: 优先级(0-3)
+        in: formData
+        name: priority
+        type: integer
+      - description: 截止时间戳(毫秒)
+        in: formData
+        name: end_time
+        type: integer
+      - description: 执行者账号
+        in: formData
+        name: assign_to
+        type: string
+      - description: 看板阶段编码
+        in: formData
+        name: stage_code
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回新创建的任务ID
+          schema:
+            $ref: '#/definitions/common.Result'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建新任务
+      tags:
+      - task
+  /project/task/uploadFile:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传文件作为任务附件，保存到本地磁盘并记录到数据库
+      parameters:
+      - description: 附件文件(最大30MB)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 项目加密ID
+        in: formData
+        name: projectCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回文件信息(file_name/file_size/file_url/file_type)
+          schema:
+            $ref: '#/definitions/common.Result'
+        "400":
+          description: 参数错误或文件过大
+          schema:
+            $ref: '#/definitions/common.Result'
+      security:
+      - ApiKeyAuth: []
+      summary: 上传任务附件
+      tags:
+      - task
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      description: 使用账号密码登录系统，返回Token和用户信息
+      parameters:
+      - description: 登录信息(account/password)
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回用户信息和Token
+          schema:
+            $ref: '#/definitions/common.Result'
+        "400":
+          description: 账号或密码错误
+          schema:
+            $ref: '#/definitions/common.Result'
+      summary: 用户登录
+      tags:
+      - user
+securityDefinitions:
+  ApiKeyAuth:
+    description: Bearer Token 认证（登录后获取）
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: 项目管理相关接口
+  name: project
+- description: 任务管理相关接口（CRUD/分配/评论/工时/附件）
+  name: task
+- description: 文件上传与管理接口
+  name: file
+- description: 用户认证与个人设置接口
+  name: user
+- description: 系统通知接口
+  name: notify

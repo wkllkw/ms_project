@@ -1,0 +1,19 @@
+server:
+  name: "menu-api"
+  addr: "127.0.0.1:18000"
+zap:
+  debugFileName: "/data/workspace/ms_project/logs/debug/menu-debug.log"
+  infoFileName: "/data/workspace/ms_project/logs/info/menu-info.log"
+  warnFileName: "/data/workspace/ms_project/logs/error/menu-error.log"
+  maxSize: 500,
+  maxAge: 28,
+  MaxBackups: 3
+etcd:
+  addrs:
+    - "127.0.0.1:2379"
+mysql:
+  username: root
+  password: root
+  host: 127.0.0.1
+  port: 13306
+  db: msproject
