@@ -80,6 +80,7 @@ backend/**/project-server
 backend/**/ms-user-service
 backend/**/project_bin
 backend/**/user_bin
+backend/**/project-project
 
 # Uploads
 backend/uploads/

@@ -982,26 +982,20 @@ func (h *HandlerTask) createComment(c *gin.Context) {
 		_ = json.Unmarshal([]byte(mentionsRaw), &mentions)
 	}
 	if len(mentions) > 0 {
-		// 查询被 @ 成员的 ID
+		// 查询被 @ 成员的 ID 并发送通知
 		for _, mName := range mentions {
 			var m memberRow
 			if err := db.Where("name=?", mName).First(&m).Error; err == nil && m.Id != 0 {
-				// 创建通知记录
-				_ = db.Create(&notifyRow{
-					MemberCode: m.Id,
-					Title:      "你在评论中被提及",
-					Content:    comment,
-					Type:       1, // notice
-					IsRead:     0,
-					CreateTime: time.Now().UnixMilli(),
-					Action:     "task:mention",
-					SendData:   fmt.Sprintf(`{"taskCode":"%s","taskId":%d}`, taskCode, id),
-				}).Error
-				// WebSocket 推送给被 @ 的人
+				// 跳过@自己
+				if m.Id == memberId {
+					continue
+				}
 				sendTaskNotifyToUser(m.Id, "task:mention", gin.H{
-					"taskCode": taskCode,
-					"comment":  comment,
-					"fromUser": memberId,
+					"taskCode":    taskCode,
+					"taskId":      id,
+					"projectCode": codecs.EncryptInt64(t.ProjectCode),
+					"comment":     comment,
+					"fromUser":    memberId,
 				})
 			}
 		}
@@ -1009,9 +1003,10 @@ func (h *HandlerTask) createComment(c *gin.Context) {
 	// 给任务执行者发送评论通知（如果执行者不是评论者本人）
 	if t.AssignTo != 0 && t.AssignTo != memberId {
 		sendTaskNotifyToUser(t.AssignTo, "task:comment", gin.H{
-			"taskCode": taskCode,
-			"comment":  comment,
-			"fromUser": memberId,
+			"taskCode":    taskCode,
+			"projectCode": codecs.EncryptInt64(t.ProjectCode),
+			"comment":     comment,
+			"fromUser":    memberId,
 		})
 	}
 	// 广播评论变更
@@ -1843,11 +1838,22 @@ func sendTaskNotifyToUser(userId int64, action string, data interface{}) {
 
 	// 写入通知记录
 	title := "任务通知"
+	contentText := ""
 	switch action {
 	case "task:mention":
 		title = "你在评论中被提及"
+		if d, ok := data.(gin.H); ok {
+			if c, _ := d["comment"].(string); c != "" {
+				contentText = c
+			}
+		}
 	case "task:comment":
 		title = "任务有新评论"
+		if d, ok := data.(gin.H); ok {
+			if c, _ := d["comment"].(string); c != "" {
+				contentText = c
+			}
+		}
 	case "task:done":
 		title = "任务已完成"
 	case "task:redo":
@@ -1856,10 +1862,13 @@ func sendTaskNotifyToUser(userId int64, action string, data interface{}) {
 		title = "任务已指派给你"
 	}
 	dataJSON, _ := json.Marshal(data)
+	if contentText == "" {
+		contentText = string(dataJSON)
+	}
 	_ = gorms.GetDB().Create(&notifyRow{
 		MemberCode: userId,
 		Title:      title,
-		Content:    string(dataJSON),
+		Content:    contentText,
 		Type:       1, // notice
 		IsRead:     0,
 		CreateTime: time.Now().UnixMilli(),

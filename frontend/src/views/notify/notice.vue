@@ -205,6 +205,25 @@
             },
             goToAction(record) {
                 this.detailVisible = false;
+                // 处理任务相关通知（task:mention, task:comment, task:done, task:redo, task:assign）
+                if (record.action && record.action.startsWith('task:')) {
+                    let taskCode = '';
+                    let projectCode = '';
+                    try {
+                        const sendData = typeof record.send_data === 'string' ? JSON.parse(record.send_data) : record.send_data;
+                        taskCode = sendData.taskCode || '';
+                        projectCode = sendData.projectCode || '';
+                    } catch (e) {}
+                    if (taskCode && projectCode) {
+                        this.$router.push('/project/space/task/' + projectCode + '/detail/' + taskCode).catch(() => {});
+                        return;
+                    }
+                    if (taskCode) {
+                        // 没有 projectCode 时，尝试通过任务列表跳转
+                        this.$router.push('/project/list/my').catch(() => {});
+                        return;
+                    }
+                }
                 if (record.action && record.action !== '' && record.action.startsWith('/')) {
                     this.$router.push(record.action).catch(() => {});
                 }
