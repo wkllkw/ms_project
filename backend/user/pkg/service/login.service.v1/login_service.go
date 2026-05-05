@@ -17,8 +17,10 @@ import (
 	"test.com/project-user/config"
 	"test.com/project-user/internal/dao"
 	"test.com/project-user/internal/data/member"
+	"test.com/project-user/internal/data/member_account"
 	"test.com/project-user/internal/data/organization"
 	"test.com/project-user/internal/database"
+	"test.com/project-user/internal/database/gorms"
 	"test.com/project-user/internal/database/tran"
 	"test.com/project-user/internal/repo"
 	"test.com/project-user/pkg/model"
@@ -136,6 +138,22 @@ func (ls *LoginService) Register(ctx context.Context, msg *login.RegisterMessage
 		if err != nil {
 			zap.L().Error("register SaveOrganization db err", zap.Error(err))
 			return errs.GrpcError(model.DBError)
+		}
+		//存入组织成员关联表 ms_member_account
+		ma := &member_account.MemberAccount{
+			MemberCode:       mem.Id,
+			OrganizationCode: org.Id,
+			IsOwner:          1,
+			Status:           1,
+			CreateTime:       time.Now().UnixMilli(),
+			Name:             mem.Name,
+			Avatar:           mem.Avatar,
+			Email:            mem.Email,
+		}
+		err = gorms.New().Session(c).Create(ma).Error
+		if err != nil {
+			zap.L().Error("register SaveMemberAccount db err", zap.Error(err))
+			// 不阻断注册流程，仅记录日志
 		}
 		return nil
 	})

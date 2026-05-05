@@ -369,7 +369,6 @@ export default {
             return {
                 on: {
                     click: (e) => {
-                        console.log(record, index)
                         if (record.type == 'task') {
                             const taskId = record.id;
                         }

@@ -19,11 +19,25 @@ const common = {
         GET_MENU({commit}) {
             return getMenuForUser().then(res => {
                 if (checkResponse(res)) {
-                    const menuData = Array.isArray(res.data)
-                        ? res.data
-                        : (Array.isArray(res.data && res.data.menusFormat) ? res.data.menusFormat : []);
+                    // 菜单API现在返回 { menus: [...], nodes: [...] }
+                    let menuData = [];
+                    let nodes = [];
+                    if (res.data && Array.isArray(res.data.menus)) {
+                        menuData = res.data.menus;
+                        nodes = res.data.nodes || [];
+                    } else if (Array.isArray(res.data)) {
+                        // 兼容旧格式：直接返回菜单数组
+                        menuData = res.data;
+                    } else if (res.data && Array.isArray(res.data.menusFormat)) {
+                        menuData = res.data.menusFormat;
+                    }
                     setStore('menu', menuData);
                     commit('SET_MENU', menuData);
+                    // 存储权限节点
+                    if (nodes.length > 0) {
+                        setStore('permissionNodes', nodes);
+                        commit('SET_PERMISSION_NODES', nodes);
+                    }
                 }
                 return res;
             })

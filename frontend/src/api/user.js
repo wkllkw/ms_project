@@ -132,3 +132,7 @@ export function _checkLogin(data) {
 export function _out(data) {
     return $http.post('project/login/_out', data);
 }
+
+export function _getUserNodes(data) {
+    return $http.post('project/index/nodes', data);
+}

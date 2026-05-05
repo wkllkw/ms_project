@@ -152,12 +152,15 @@
         methods: {
             init() {
                 let app = this;
-                app.requestData.type = 'notice';
                 if (app.activeTab === 'task') {
+                    app.requestData.type = 'notice';
                     app.requestData.action = 'task';
                 } else if (app.activeTab === 'system') {
-                    app.requestData.action = 'system';
+                    app.requestData.type = 'system';
+                    delete app.requestData.action;
                 } else {
+                    // 全部：不传 type，由后端返回所有通知和系统公告
+                    app.requestData.type = 'all';
                     delete app.requestData.action;
                 }
                 app.loading = true;

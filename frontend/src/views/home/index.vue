@@ -122,8 +122,9 @@
                                 <a-card :bordered="false" :body-style="{ padding: 0 }" @click="routerLink('/project/space/task/' + item.code)">
                                     <img
                                         slot="cover"
-                                        alt="example"
-                                        :src="item.cover"
+                                        alt="项目封面"
+                                        :src="item.cover || defaultCover"
+                                        @error="onCoverError"
                                     />
                                     <a-card-meta>
                         <div slot="title" class="card-title">
@@ -389,6 +390,7 @@
                 yiyan: {},
                 projectList: [],
                 projectTotal: 0,
+                defaultCover: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><defs><linearGradient id="d" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e8e8e8"/><stop offset="100%" style="stop-color:#d9d9d9"/></linearGradient></defs><rect width="300" height="150" fill="url(#d)"/><rect x="120" y="55" width="60" height="40" rx="4" fill="#bbb"/><rect x="130" y="65" width="40" height="4" rx="1" fill="#999"/><rect x="135" y="75" width="30" height="4" rx="1" fill="#aaa"/></svg>'),
                 activities: [],
                 tasks: [],
                 tasksTotal: 0,
@@ -622,6 +624,9 @@
             formatTime(time) {
                 return relativelyTime(time);
             },
+            onCoverError(e) {
+                e.target.src = this.defaultCover;
+            },
             showTaskTime(time, timeEnd) {
                 return formatTaskTime(time, timeEnd);
             },
@@ -645,77 +650,133 @@
 </script>
 <style lang="less">
     .home-index {
+
+        // ===== 顶部欢迎区 - 极简白底 + 微装饰 =====
         .enhanced-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 0 0 0 0;
-            padding: 20px 24px;
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 20px 28px;
             margin: 0;
             position: relative;
             overflow: hidden;
 
-            &::before {
+            &::after {
                 content: '';
                 position: absolute;
-                top: -50%;
-                right: -10%;
-                width: 300px;
-                height: 300px;
-                border-radius: 50%;
-                background: rgba(255, 255, 255, 0.06);
+                top: 0;
+                right: 0;
+                width: 200px;
+                height: 100%;
+                background: linear-gradient(135deg, transparent 0%, rgba(58, 130, 248, 0.02) 100%);
+                pointer-events: none;
             }
 
             .day-text {
-                color: rgba(255, 255, 255, 0.7) !important;
+                color: rgba(0, 0, 0, 0.35) !important;
+                font-size: 13px;
+                margin-bottom: 12px;
 
-                a { color: rgba(255, 255, 255, 0.7) !important; }
+                a { color: rgba(0, 0, 0, 0.35) !important; }
             }
 
             .header-content {
+                margin-bottom: 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+
                 .left-content {
-                    .user-info {
-                        .title {
-                            color: #fff;
+                    display: flex;
+                    align-items: center;
+
+                    .avatar {
+                        .ant-avatar {
+                            border: none;
+                            box-shadow: none;
                         }
+                    }
+
+                    .user-info {
+                        margin-left: 12px;
+
+                        .title {
+                            font-size: 18px;
+                            font-weight: 600;
+                            color: rgba(0, 0, 0, 0.85);
+                        }
+
                         .team {
-                            color: rgba(255, 255, 255, 0.7) !important;
+                            color: rgba(0, 0, 0, 0.4) !important;
+                            font-size: 13px;
                         }
                     }
                 }
 
                 .right-content {
+                    display: flex;
+
                     .content-item {
+                        padding: 0 28px;
+                        position: relative;
+
                         .item-title {
-                            color: rgba(255, 255, 255, 0.7) !important;
+                            color: rgba(0, 0, 0, 0.4) !important;
+                            font-size: 12px;
+                            font-weight: 500;
 
                             .stat-icon {
-                                color: rgba(255, 255, 255, 0.9) !important;
+                                color: rgba(0, 0, 0, 0.3) !important;
                                 margin-right: 4px;
                             }
                         }
+
                         .item-text {
-                            color: #fff;
+                            font-size: 26px;
+                            font-weight: 600;
+                            color: rgba(0, 0, 0, 0.85);
+
+                            .small {
+                                font-size: 18px;
+                            }
                         }
 
                         &:after {
-                            background-color: rgba(255, 255, 255, 0.15) !important;
+                            background-color: #f0f0f0;
+                            position: absolute;
+                            top: 4px;
+                            right: 0;
+                            width: 1px;
+                            height: 36px;
+                            content: "";
+                        }
+
+                        &:last-child {
+                            &:after {
+                                width: 0;
+                            }
                         }
                     }
                 }
             }
         }
 
+        // ===== 快速操作栏 =====
         .quick-actions-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 16px 24px;
-            margin: 0 24px;
+            padding: 12px 28px;
+            margin: 16px 28px 0;
             background: #fff;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            margin-top: -12px;
-            position: relative;
-            z-index: 1;
+            border: 1px solid #f0f0f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            transition: border-color 0.2s ease, box-shadow 0.25s ease;
+
+            &:hover {
+                border-color: rgba(58, 130, 248, 0.2);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            }
 
             .quick-actions-left {
                 display: flex;
@@ -733,11 +794,12 @@
 
                 .ant-alert {
                     border-radius: 6px;
-                    padding: 6px 12px;
+                    padding: 4px 12px;
                 }
             }
         }
 
+        // ===== 页面头部（通用） =====
         .page-header {
             .header-content {
                 margin-bottom: 16px;
@@ -753,7 +815,7 @@
                         line-height: 33px;
 
                         .title {
-                            font-size: 20px;
+                            font-size: 18px;
                         }
                     }
                 }
@@ -762,24 +824,25 @@
                     display: flex;
 
                     .content-item {
-                        padding: 0 32px;
+                        padding: 0 28px;
                         position: relative;
 
                         .item-text {
-                            font-size: 30px;
+                            font-size: 26px;
+                            font-weight: 600;
 
                             .small {
-                                font-size: 20px;
+                                font-size: 18px;
                             }
                         }
 
                         &:after {
-                            background-color: #e8e8e8;
+                            background-color: #f0f0f0;
                             position: absolute;
-                            top: 8px;
+                            top: 4px;
                             right: 0;
                             width: 1px;
-                            height: 40px;
+                            height: 36px;
                             content: "";
                         }
 
@@ -793,66 +856,84 @@
             }
         }
 
+        // ===== 页面主体 =====
         .page-wrapper {
-            margin: 24px;
+            margin: 20px 28px;
 
             .page-wrapper-content {
                 display: flex;
             }
 
+            // 进度仪表盘
             .progress-dashboard {
                 border-radius: 8px;
                 overflow: hidden;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                border: 1px solid #f0f0f0;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                transition: border-color 0.2s ease, box-shadow 0.25s ease;
+
+                &:hover {
+                    border-color: rgba(58, 130, 248, 0.25);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+                }
 
                 .dashboard-stats {
                     display: flex;
                     justify-content: space-around;
-                    padding: 16px 0 24px;
+                    padding: 20px 0;
 
                     .dashboard-stat-item {
                         text-align: center;
+                        transition: transform 0.2s ease;
+
+                        &:hover {
+                            transform: translateY(-2px);
+                        }
 
                         .stat-circle {
-                            width: 80px;
-                            height: 80px;
+                            width: 72px;
+                            height: 72px;
                             border-radius: 50%;
-                            border: 3px solid #1890ff;
+                            border: 3px solid #3a82f8;
                             display: flex;
                             align-items: center;
                             justify-content: center;
                             margin: 0 auto 8px;
-                            transition: all 0.3s;
+                            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+                            position: relative;
+                            background: rgba(58, 130, 248, 0.03);
 
                             &:hover {
-                                transform: scale(1.1);
-                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                                border-color: #5a96fa;
+                                box-shadow: 0 2px 10px rgba(58, 130, 248, 0.15);
                             }
 
                             .stat-value {
-                                font-size: 24px;
-                                font-weight: 700;
+                                font-size: 22px;
+                                font-weight: 600;
                                 color: rgba(0, 0, 0, 0.85);
+                                animation: countUp 0.4s ease-out;
 
                                 small {
-                                    font-size: 14px;
+                                    font-size: 13px;
                                     font-weight: 400;
                                 }
                             }
                         }
 
                         .stat-label {
-                            font-size: 13px;
-                            color: rgba(0, 0, 0, 0.45);
+                            font-size: 12px;
+                            color: rgba(0, 0, 0, 0.4);
+                            font-weight: 500;
                         }
                     }
                 }
 
                 .dashboard-project-bars {
-                    padding: 0 8px;
+                    padding: 0 12px;
 
                     .project-bar-item {
-                        margin-bottom: 12px;
+                        margin-bottom: 10px;
 
                         .bar-info {
                             display: flex;
@@ -869,14 +950,14 @@
                                 max-width: 80%;
 
                                 &:hover {
-                                    color: #1890ff;
+                                    color: #3a82f8;
                                 }
                             }
 
                             .bar-percent {
                                 font-size: 12px;
-                                font-weight: 600;
-                                color: rgba(0, 0, 0, 0.45);
+                                font-weight: 500;
+                                color: rgba(0, 0, 0, 0.4);
                                 flex-shrink: 0;
                             }
                         }
@@ -897,26 +978,32 @@
                 }
             }
 
+            // 项目列表
             .project-list {
                 border-radius: 8px;
                 overflow: hidden;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                border: 1px solid #f0f0f0;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                transition: border-color 0.2s ease, box-shadow 0.25s ease;
+
+                &:hover {
+                    border-color: rgba(58, 130, 248, 0.2);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                }
 
                 .project-card-grid {
                     width: 25%;
-                    padding: 12px;
+                    padding: 10px;
                     cursor: pointer;
-                    transition: all 0.3s ease;
+                    transition: background-color 0.15s ease, box-shadow 0.15s ease;
 
                     &:hover {
-                        transform: translateY(-4px);
-                        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-                        z-index: 1;
+                        background: rgba(58, 130, 248, 0.03);
                     }
                 }
 
                 .ant-card-cover {
-                    height: 125px;
+                    height: 110px;
                     overflow: hidden;
 
                     img {
@@ -924,12 +1011,7 @@
                         width: 100% !important;
                         height: 100% !important;
                         object-fit: cover !important;
-                        transition: transform 0.5s ease;
                     }
-                }
-
-                .project-card-grid:hover .ant-card-cover img {
-                    transform: scale(1.05);
                 }
 
                 .card-title {
@@ -945,7 +1027,7 @@
                         font-weight: 500;
 
                         &:hover {
-                            color: #1890ff;
+                            color: #3a82f8;
                         }
                     }
                 }
@@ -956,30 +1038,30 @@
                 }
 
                 .card-description {
-                    color: rgba(0, 0, 0, 0.45);
-                    height: 44px;
-                    line-height: 22px;
+                    color: rgba(0, 0, 0, 0.4);
+                    height: 40px;
+                    line-height: 20px;
                     overflow: hidden;
                     .description-text{
-                        height: 22px;
+                        height: 20px;
                     }
                 }
 
                 .project-item {
                     display: flex;
-                    margin-top: 8px;
+                    margin-top: 6px;
                     overflow: hidden;
                     font-size: 12px;
                     height: 20px;
                     line-height: 20px;
 
                     a {
-                        color: rgba(0, 0, 0, 0.45);
+                        color: rgba(0, 0, 0, 0.4);
                         display: inline-block;
                         flex: 1 1 0;
 
                         &:hover {
-                            color: #1890ff;
+                            color: #3a82f8;
                         }
                     }
 
@@ -991,9 +1073,9 @@
                 }
 
                 .ant-card-meta-description {
-                    color: rgba(0, 0, 0, 0.45);
-                    height: 44px;
-                    line-height: 22px;
+                    color: rgba(0, 0, 0, 0.4);
+                    height: 40px;
+                    line-height: 20px;
                     overflow: hidden;
                 }
             }
@@ -1008,10 +1090,18 @@
                 }
             }
 
+            // 活动列表
             .activities-list {
                 border-radius: 8px;
                 overflow: hidden;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                border: 1px solid #f0f0f0;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                transition: border-color 0.2s ease, box-shadow 0.25s ease;
+
+                &:hover {
+                    border-color: rgba(58, 130, 248, 0.2);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                }
 
                 .ant-list-item-meta-title {
                     position: relative;
@@ -1029,13 +1119,21 @@
                 }
             }
 
+            // 任务列表
             .tasks-list {
                 border-radius: 8px;
                 overflow: hidden;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                border: 1px solid #f0f0f0;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                transition: border-color 0.2s ease, box-shadow 0.25s ease;
+
+                &:hover {
+                    border-color: rgba(58, 130, 248, 0.2);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                }
 
                 .ant-card-body {
-                    padding: 6px 24px;
+                    padding: 6px 20px;
 
                     .ant-list-item-meta, .ant-list-item-meta-content{
                         width: 100%;
@@ -1052,17 +1150,17 @@
                             text-align: center;
                             margin: 11px 2px 0 0;
                             padding: 10px 0;
-                            transition: background 218ms;
+                            transition: background 0.15s;
                             border-radius: 3px;
                             .check-box {
-                                color: #A6A6A6;
+                                color: #b0b0b0;
                                 cursor: pointer;
                                 border-radius: 3px;
                                 margin: 5px;
                             }
                             &:hover {
                                 .check-box {
-                                    color: grey;
+                                    color: rgba(0, 0, 0, 0.45);
                                 }
 
                                 background: #f5f5f5;
@@ -1072,10 +1170,18 @@
                 }
             }
 
+            // 日程列表
             .events-list {
                 border-radius: 8px;
                 overflow: hidden;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                border: 1px solid #f0f0f0;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                transition: border-color 0.2s ease, box-shadow 0.25s ease;
+
+                &:hover {
+                    border-color: rgba(58, 130, 248, 0.2);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                }
 
                 .ant-card-body {
                     padding: 0px 6px;
@@ -1106,7 +1212,7 @@
                         margin-bottom: 2px;
                         border-bottom: 1px solid #f5f5f5;
                         padding: 10px 20px;
-                        transition: background-color 218ms;
+                        transition: background-color 0.15s;
 
                         .ant-list-item-meta-title {
                             overflow: hidden;
@@ -1177,445 +1283,17 @@
                         max-width: 100px;
                         vertical-align: top;
                         margin-left: 6px;
-                        transition: all 0.3s;
+                        transition: color 0.15s;
                         display: inline-block;
                     }
 
                     &:hover {
                         span {
-                            color: #1890ff;
+                            color: #3a82f8;
                         }
                     }
                 }
             }
-        }
-        
-        // ===== 首页增强样式 =====
-        
-        // 页面头部增强
-        .page-header {
-            &.enhanced-header {
-                background: linear-gradient(135deg, #1890ff 0%, #096dd9 50%, #0050b3 100%);
-                border-radius: 0 0 24px 24px;
-                padding: 28px 32px;
-                margin: 0 16px 20px;
-                box-shadow: 0 8px 32px rgba(24, 144, 255, 0.3);
-                
-                &::before {
-                    content: '';
-                    position: absolute;
-                    top: -30%;
-                    right: -5%;
-                    width: 400px;
-                    height: 400px;
-                    border-radius: 50%;
-                    background: rgba(255, 255, 255, 0.04);
-                    animation: float 8s ease-in-out infinite;
-                }
-                
-                &::after {
-                    content: '';
-                    position: absolute;
-                    bottom: -20%;
-                    left: -10%;
-                    width: 300px;
-                    height: 300px;
-                    border-radius: 50%;
-                    background: rgba(255, 255, 255, 0.03);
-                    animation: float 10s ease-in-out infinite reverse;
-                }
-                
-                .day-text {
-                    font-size: 14px;
-                    letter-spacing: 0.5px;
-                    
-                    a {
-                        transition: all 0.3s ease;
-                        
-                        &:hover {
-                            color: #fff !important;
-                        }
-                        
-                        .anticon {
-                            transition: transform 0.3s ease;
-                            
-                            &:hover {
-                                transform: rotate(180deg);
-                            }
-                        }
-                    }
-                }
-                
-                .header-content {
-                    position: relative;
-                    z-index: 1;
-                    
-                    .left-content {
-                        .avatar {
-                            .ant-avatar {
-                                border: 3px solid rgba(255, 255, 255, 0.3);
-                                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                                transition: all 0.3s ease;
-                                
-                                &:hover {
-                                    transform: scale(1.05);
-                                    border-color: rgba(255, 255, 255, 0.5);
-                                }
-                            }
-                        }
-                        
-                        .user-info {
-                            .title {
-                                font-size: 24px;
-                                font-weight: 600;
-                                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                            }
-                            
-                            .team {
-                                font-size: 14px;
-                                opacity: 0.9;
-                            }
-                        }
-                    }
-                    
-                    .right-content {
-                        .content-item {
-                            padding: 0 28px;
-                            
-                            .item-title {
-                                font-size: 13px;
-                                font-weight: 500;
-                                margin-bottom: 4px;
-                                
-                                .stat-icon {
-                                    font-size: 16px;
-                                }
-                            }
-                            
-                            .item-text {
-                                font-size: 32px;
-                                font-weight: 700;
-                                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                                
-                                span {
-                                    background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.9) 100%);
-                                    -webkit-background-clip: text;
-                                    -webkit-text-fill-color: transparent;
-                                }
-                            }
-                            
-                            &:after {
-                                height: 50px;
-                                top: 5px;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // 快速操作栏增强
-        .quick-actions-bar {
-            margin: 0 32px;
-            padding: 20px 28px;
-            background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
-            border-radius: 14px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-            margin-top: -20px;
-            position: relative;
-            z-index: 2;
-            border: 1px solid rgba(0, 0, 0, 0.04);
-            
-            .quick-actions-left {
-                gap: 12px;
-                
-                .ant-btn {
-                    border-radius: 10px;
-                    height: 40px;
-                    padding: 0 20px;
-                    font-weight: 500;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    
-                    &:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 16px rgba(24, 144, 255, 0.35);
-                    }
-                    
-                    &:active {
-                        transform: translateY(0);
-                    }
-                    
-                    .anticon {
-                        font-size: 16px;
-                        margin-right: 6px;
-                    }
-                }
-            }
-            
-            .quick-actions-right {
-                .ant-alert {
-                    border-radius: 10px;
-                    padding: 10px 16px;
-                    font-weight: 500;
-                    
-                    &-error {
-                        background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
-                        border: 1px solid #ffa39e;
-                    }
-                    
-                    &-warning {
-                        background: linear-gradient(135deg, #fffbe6 0%, #ffe58f 100%);
-                        border: 1px solid #ffd591;
-                    }
-                    
-                    &-success {
-                        background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%);
-                        border: 1px solid #95de64;
-                    }
-                }
-            }
-        }
-        
-        // 页面主体增强
-        .page-wrapper {
-            margin: 28px 32px;
-            
-            .page-wrapper-content {
-                .project-list-content {
-                    // 进度仪表盘增强
-                    .progress-dashboard {
-                        border-radius: 16px;
-                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-                        border: 1px solid rgba(0, 0, 0, 0.04);
-                        overflow: hidden;
-                        
-                        .ant-card-head {
-                            background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
-                            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-                            padding: 18px 24px;
-                            
-                            &-title {
-                                font-weight: 600;
-                                font-size: 17px;
-                            }
-                        }
-                        
-                        .dashboard-stats {
-                            padding: 24px 0 32px;
-                            
-                            .dashboard-stat-item {
-                                .stat-circle {
-                                    width: 90px;
-                                    height: 90px;
-                                    border-width: 4px;
-                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-                                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                                    
-                                    &:hover {
-                                        transform: scale(1.15) rotate(5deg);
-                                        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-                                    }
-                                    
-                                    .stat-value {
-                                        font-size: 28px;
-                                        font-weight: 700;
-                                        
-                                        small {
-                                            font-size: 16px;
-                                            font-weight: 500;
-                                        }
-                                    }
-                                }
-                                
-                                .stat-label {
-                                    font-size: 14px;
-                                    font-weight: 500;
-                                    margin-top: 8px;
-                                }
-                            }
-                        }
-                        
-                        .dashboard-project-bars {
-                            padding: 0 16px 16px;
-                            
-                            .project-bar-item {
-                                margin-bottom: 16px;
-                                padding: 8px 12px;
-                                border-radius: 8px;
-                                transition: all 0.3s ease;
-                                
-                                &:hover {
-                                    background: rgba(24, 144, 255, 0.04);
-                                }
-                                
-                                .bar-info {
-                                    margin-bottom: 6px;
-                                    
-                                    .bar-name {
-                                        font-weight: 500;
-                                        transition: all 0.3s ease;
-                                        
-                                        &:hover {
-                                            color: #1890ff;
-                                        }
-                                    }
-                                    
-                                    .bar-percent {
-                                        font-size: 13px;
-                                        font-weight: 600;
-                                    }
-                                }
-                                
-                                .ant-progress {
-                                    .ant-progress-inner {
-                                        border-radius: 6px;
-                                    }
-                                    
-                                    .ant-progress-bg {
-                                        border-radius: 6px;
-                                        transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-                                    }
-                                }
-                            }
-                        }
-                        
-                        .dashboard-empty {
-                            padding: 40px 0;
-                            
-                            .anticon {
-                                font-size: 48px !important;
-                                opacity: 0.5;
-                            }
-                            
-                            p {
-                                font-size: 14px;
-                                margin-top: 16px;
-                            }
-                        }
-                    }
-                    
-                    // 项目列表卡片增强
-                    .project-list {
-                        border-radius: 16px;
-                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-                        border: 1px solid rgba(0, 0, 0, 0.04);
-                        overflow: hidden;
-                        
-                        .ant-card-head {
-                            background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
-                            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-                            padding: 18px 24px;
-                        }
-                        
-                        .project-card-grid {
-                            padding: 16px;
-                            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                            
-                            &:hover {
-                                transform: translateY(-6px);
-                                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-                                z-index: 2;
-                            }
-                            
-                            .ant-card {
-                                border-radius: 12px;
-                                overflow: hidden;
-                                border: 1px solid rgba(0, 0, 0, 0.04);
-                                
-                                &-cover {
-                                    height: 140px;
-                                    border-radius: 12px 12px 0 0;
-                                    
-                                    img {
-                                        transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-                                    }
-                                }
-                                
-                                &:hover .ant-card-cover img {
-                                    transform: scale(1.1);
-                                }
-                                
-                                .ant-card-body {
-                                    padding: 16px;
-                                }
-                            }
-                            
-                            .card-title {
-                                a {
-                                    font-size: 15px;
-                                    font-weight: 600;
-                                    transition: all 0.3s ease;
-                                    
-                                    &:hover {
-                                        color: #1890ff;
-                                    }
-                                    
-                                    .anticon-star {
-                                        font-size: 14px;
-                                    }
-                                }
-                            }
-                            
-                            .card-description {
-                                font-size: 13px;
-                                line-height: 1.5;
-                            }
-                            
-                            .ant-progress {
-                                margin-top: 12px;
-                                
-                                .ant-progress-inner {
-                                    border-radius: 4px;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // 活动列表增强
-                    .activities-list,
-                    .tasks-list,
-                    .events-list {
-                        border-radius: 16px;
-                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-                        border: 1px solid rgba(0, 0, 0, 0.04);
-                        overflow: hidden;
-                        
-                        .ant-card-head {
-                            background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
-                            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-                            padding: 18px 24px;
-                        }
-                        
-                        .ant-list-item {
-                            padding: 16px 24px;
-                            transition: all 0.3s ease;
-                            
-                            &:hover {
-                                background: rgba(24, 144, 255, 0.02);
-                            }
-                            
-                            .ant-list-item-meta-title {
-                                font-weight: 500;
-                            }
-                            
-                            .ant-avatar {
-                                border-radius: 50%;
-                                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // 动画定义
-    @keyframes float {
-        0%, 100% {
-            transform: translateY(0) scale(1);
-        }
-        50% {
-            transform: translateY(-20px) scale(1.02);
         }
     }
 </style>

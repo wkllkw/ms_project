@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"test.com/project-api/internal/authz"
 	"test.com/project-api/internal/database/gorms"
 	"test.com/project-api/internal/menus"
 	projectMenu "test.com/project-api/pkg/model/menu"
@@ -29,7 +30,39 @@ func (h *HandlerMenu) menu(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(500, "查询失败"))
 		return
 	}
-	c.JSON(http.StatusOK, result.Success(menus.BuildTree(pms)))
+
+	// 根据用户角色过滤菜单
+	memberId := c.GetInt64("memberId")
+	db := gorms.GetDB()
+	nodes := authz.GetUserNodes(db, memberId)
+	allowedNodes := make(map[string]bool, len(nodes))
+	for _, n := range nodes {
+		allowedNodes[n] = true
+	}
+
+	// 如果没有任何权限节点（未分配角色或默认角色无节点），只返回不绑定权限的菜单（node为空或"#"）
+	if len(allowedNodes) == 0 {
+		filtered := authz.FilterProjectMenusByNodes(pms, allowedNodes)
+		tree := menus.BuildTree(filtered)
+		c.JSON(http.StatusOK, result.Success(gin.H{
+			"menus": tree,
+			"nodes": nodes,
+		}))
+		return
+	}
+
+	// 先过滤扁平列表，再构建树
+	filtered := authz.FilterProjectMenusByNodes(pms, allowedNodes)
+	tree := menus.BuildTree(filtered)
+
+	// 二次过滤树：确保父节点即使 node 不在权限中，只要有可见子节点也保留
+	tree = authz.FilterMenusByNodes(tree, allowedNodes)
+
+	// 同时返回用户的权限节点列表，供前端路由守卫使用
+	c.JSON(http.StatusOK, result.Success(gin.H{
+		"menus": tree,
+		"nodes": nodes,
+	}))
 }
 
 func parseBoolInt(v string) int {
@@ -106,13 +139,12 @@ func (h *HandlerMenu) menuEdit(c *gin.Context) {
 		return
 	}
 	updates := map[string]any{}
+	// 使用 c.Request.ParseMultipartForm 确保 multipart 表单中所有字段都被解析
+	// 允许空字符串通过，这样用户可以清空已有值的字段
+	_ = c.Request.ParseMultipartForm(32 << 20)
 	for _, k := range []string{"title", "icon", "url", "file_path", "params", "node", "values"} {
-		if v := c.PostForm(k); v != "" {
-			if k == "file_path" {
-				updates["file_path"] = v
-			} else {
-				updates[k] = v
-			}
+		if v, ok := c.GetPostForm(k); ok {
+			updates[k] = v
 		}
 	}
 	if sortStr := c.PostForm("sort"); sortStr != "" {
@@ -143,17 +175,19 @@ func (h *HandlerMenu) menuDel(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB().WithContext(c.Request.Context())
-	var childIDs []int64
-	_ = db.Model(&menus.ProjectMenu{}).Select("id").Where("pid=?", id).Scan(&childIDs).Error
-	var grandChildIDs []int64
-	if len(childIDs) > 0 {
-		_ = db.Model(&menus.ProjectMenu{}).Select("id").Where("pid in ?", childIDs).Scan(&grandChildIDs).Error
+	// 递归收集所有子孙ID，支持任意层级
+	allIDs := []int64{id}
+	queue := []int64{id}
+	for len(queue) > 0 {
+		var childIDs []int64
+		_ = db.Model(&menus.ProjectMenu{}).Select("id").Where("pid in ?", queue).Scan(&childIDs).Error
+		if len(childIDs) == 0 {
+			break
+		}
+		allIDs = append(allIDs, childIDs...)
+		queue = childIDs
 	}
-	ids := make([]int64, 0, 1+len(childIDs)+len(grandChildIDs))
-	ids = append(ids, id)
-	ids = append(ids, childIDs...)
-	ids = append(ids, grandChildIDs...)
-	if err := db.Where("id in ?", ids).Delete(&menus.ProjectMenu{}).Error; err != nil {
+	if err := db.Where("id in ?", allIDs).Delete(&menus.ProjectMenu{}).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "删除失败"))
 		return
 	}

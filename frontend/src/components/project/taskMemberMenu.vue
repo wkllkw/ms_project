@@ -137,15 +137,16 @@
                 if (this.projectCode) {
                     this.listLoading = true;
                     list({projectCode: this.projectCode, pageSize: 300}).then(res => {
-                        this.list = res.data.list;
-                        this.listTemp = res.data.list;
+                        this.list = res.data.list || [];
+                        this.listTemp = res.data.list || [];
                         this.listLoading = false;
                     });
                 }
                 if (this.taskCode) {
                     this.doListLoading = true;
                     getTaskMembers({taskCode: this.taskCode, pageSize: 300}).then(res => {
-                        this.doList = res.data.list.filter(item => item.is_executor);
+                        const memberList = res.data.list || [];
+                        this.doList = memberList.filter(item => item.is_executor || item.isExecutor);
                         this.doListLoading = false;
                     });
                 }
@@ -160,9 +161,10 @@
                 return show;
             },
             showCheck(item) {
-                if (item.is_executor) {
+                if (item.is_executor || item.isExecutor) {
                     return true;
                 }
+                return false;
             },
             assignTask(executorCode, executor = null) {
                 if (this.isCommit) {

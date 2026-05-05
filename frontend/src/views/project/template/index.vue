@@ -38,7 +38,7 @@
                             :description="item.description"
                     >
                         <span slot="title">{{item.name}}</span>
-                        <a-avatar slot="avatar" icon="user" :src="item.cover"/>
+                        <a-avatar slot="avatar" icon="appstore" :src="item.cover" style="backgroundColor:#722ed1"/>
                     </a-list-item-meta>
                     <div class="other-info muted">
                         <div class="info-item task" v-if="item.task_stages && item.task_stages.length">

@@ -318,7 +318,7 @@
             },
             tabChange(key) {
                 if (this.$route.query.key !== key) {
-                    this.$router.replace({query: {key: key}});
+                    this.$router.replace({query: {key: key}}).catch(() => {});
                 }
                 switch (key) {
                     case '3':

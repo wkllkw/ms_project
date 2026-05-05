@@ -2,8 +2,13 @@ package project
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"math"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -74,6 +79,12 @@ type memberBaseRow struct {
 
 func (*memberBaseRow) TableName() string { return "ms_member" }
 
+func generateProjectTemplateCode() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return "tpl_" + hex.EncodeToString(b)
+}
+
 func orgCodeToInt64(v any) int64 {
 	switch t := v.(type) {
 	case int64:
@@ -81,6 +92,27 @@ func orgCodeToInt64(v any) int64 {
 	case int:
 		return int64(t)
 	case string:
+		i, _ := strconv.ParseInt(t, 10, 64)
+		return i
+	default:
+		return 0
+	}
+}
+
+// orgCodeFromContext 从 gin 上下文中获取解密后的 organizationCode
+func orgCodeFromContext(c *gin.Context) int64 {
+	orgVal, _ := c.Get("organizationCode")
+	switch t := orgVal.(type) {
+	case int64:
+		return t
+	case int:
+		return int64(t)
+	case string:
+		decrypted, err := codecs.DecryptInt64(t)
+		if err == nil && decrypted > 0 {
+			return decrypted
+		}
+		// 如果不是加密字符串，尝试直接解析为数字
 		i, _ := strconv.ParseInt(t, 10, 64)
 		return i
 	default:
@@ -96,8 +128,7 @@ func (p *HandlerProject) listFromDB(c *gin.Context, selectBy string) (gin.H, err
 	page := &model.Page{}
 	page.Bind(c)
 	memberId := c.GetInt64("memberId")
-	orgVal, _ := c.Get("organizationCode")
-	orgCode := orgCodeToInt64(orgVal)
+	orgCode := orgCodeFromContext(c)
 
 	db := gorms.GetDB().WithContext(c.Request.Context())
 	base := db.Table("ms_project p").
@@ -193,19 +224,21 @@ func (p *HandlerProject) index(c *gin.Context) {
 
 func (p *HandlerProject) myProjectList(c *gin.Context) {
 	result := &common.Result{}
-	//1. 获取参数
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+	orgCode := orgCodeFromContext(c)
+
 	if memberCode := c.PostForm("memberCode"); memberCode != "" {
-		memberId, err := codecs.DecryptInt64(memberCode)
-		if err != nil || memberId == 0 {
+		mid, err := codecs.DecryptInt64(memberCode)
+		if err != nil || mid == 0 {
 			c.JSON(http.StatusOK, result.Fail(400, "memberCode无效"))
 			return
 		}
 		page := &model.Page{}
 		page.Bind(c)
-		db := gorms.GetDB().WithContext(ctx)
-		base := db.Table("ms_project_member pm").Joins("join ms_project p on p.id=pm.project_code").Where("pm.member_code=?", memberId).Where("p.deleted=0")
+		db := gorms.GetDB().WithContext(c.Request.Context())
+		base := db.Table("ms_project_member pm").Joins("join ms_project p on p.id=pm.project_code").Where("pm.member_code=?", mid).Where("p.deleted=0")
+		if orgCode != 0 {
+			base = base.Where("p.organization_code=?", orgCode)
+		}
 		var total int64
 		_ = base.Count(&total).Error
 		var rows []struct {
@@ -229,31 +262,8 @@ func (p *HandlerProject) myProjectList(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Success(gin.H{"list": list, "total": total}))
 		return
 	}
-	memberId := c.GetInt64("memberId")
-	memberName := c.GetString("memberName")
-	page := &model.Page{}
-	page.Bind(c)
-	selectBy := c.PostForm("selectBy")
-	msg := &project.ProjectRpcMessage{
-		MemberId:   memberId,
-		MemberName: memberName,
-		SelectBy:   selectBy,
-		Page:       page.Page,
-		PageSize:   page.PageSize}
-	myProjectResponse, err := ProjectServiceClient.FindProjectByMemId(ctx, msg)
-	if err == nil && myProjectResponse != nil {
-		var pms []*pro.ProjectAndMember
-		copier.Copy(&pms, myProjectResponse.Pm)
-		if pms == nil {
-			pms = []*pro.ProjectAndMember{}
-		}
-		c.JSON(http.StatusOK, result.Success(gin.H{
-			"list":  pms,
-			"total": myProjectResponse.Total,
-		}))
-		return
-	}
 
+	selectBy := c.PostForm("selectBy")
 	data, _ := p.listFromDB(c, selectBy)
 	c.JSON(http.StatusOK, result.Success(data))
 }
@@ -266,8 +276,7 @@ func (p *HandlerProject) projectTemplate(c *gin.Context) {
 	viewTypeStr := c.PostForm("viewType")
 	viewType, _ := strconv.ParseInt(viewTypeStr, 10, 64)
 	memberId := c.GetInt64("memberId")
-	orgVal, _ := c.Get("organizationCode")
-	orgCode := orgCodeToInt64(orgVal)
+	orgCode := orgCodeFromContext(c)
 	// 直接数据库查询
 	db := gorms.GetDB().WithContext(c.Request.Context())
 	var templates []*pro.ProjectTemplate
@@ -349,7 +358,7 @@ func (p *HandlerProject) projectSave(c *gin.Context) {
 		rsp = &pro.SaveProject{}
 		copier.Copy(rsp, saveProject)
 	} else {
-		org := orgCodeToInt64(organizationCode)
+		org := orgCodeFromContext(c)
 		db := gorms.GetDB().WithContext(c.Request.Context())
 		now := time.Now().UnixMilli()
 		if req.Id == 0 {
@@ -471,6 +480,11 @@ func (p *HandlerProject) readProject(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	// 数据隔离：检查当前用户是否是项目成员
+	if !authz.IsProjectMember(db, memberId, projectId) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
 	var pr projectRow
 	if dbErr := db.Where("id=?", projectId).First(&pr).Error; dbErr != nil {
 		c.JSON(http.StatusOK, result.Fail(404, "项目不存在"))
@@ -555,14 +569,19 @@ func (p *HandlerProject) collectProject(c *gin.Context) {
 	memberId := c.GetInt64("memberId")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	projectId, decErr := codecs.DecryptInt64(projectCode)
+	if decErr != nil || projectId == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "projectCode无效"))
+		return
+	}
+	// 数据隔离：只有项目成员才能收藏项目
+	db := gorms.GetDB()
+	if !authz.IsProjectMember(db, memberId, projectId) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
+		return
+	}
 	_, err := ProjectServiceClient.UpdateCollectProject(ctx, &project.ProjectRpcMessage{ProjectCode: projectCode, CollectType: collectType, MemberId: memberId})
 	if err != nil {
-		projectId, decErr := codecs.DecryptInt64(projectCode)
-		if decErr != nil || projectId == 0 {
-			c.JSON(http.StatusOK, result.Fail(400, "projectCode无效"))
-			return
-		}
-		db := gorms.GetDB().WithContext(c.Request.Context())
 		if collectType == "cancel" {
 			_ = db.Where("project_code=? and member_code=?", projectId, memberId).Delete(&projectCollectionRow{}).Error
 		} else {
@@ -595,6 +614,19 @@ func (p *HandlerProject) editProject(c *gin.Context) {
 	memberId := c.GetInt64("memberId")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	// 数据隔离：检查当前用户是否是项目成员
+	if req.ProjectCode != "" {
+		projectId, decErr := codecs.DecryptInt64(req.ProjectCode)
+		if decErr != nil || projectId == 0 {
+			c.JSON(http.StatusOK, result.Fail(400, "projectCode无效"))
+			return
+		}
+		db := gorms.GetDB()
+		if !authz.IsProjectMember(db, memberId, projectId) {
+			c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
+			return
+		}
+	}
 	msg := &project.UpdateProjectMessage{}
 	copier.Copy(msg, req)
 	msg.MemberId = memberId
@@ -639,8 +671,7 @@ func (p *HandlerProject) projectTemplateSave(c *gin.Context) {
 		return
 	}
 	memberId := c.GetInt64("memberId")
-	orgVal, _ := c.Get("organizationCode")
-	orgCode := orgCodeToInt64(orgVal)
+	orgCode := orgCodeFromContext(c)
 	db := gorms.GetDB().WithContext(c.Request.Context())
 	now := time.Now().UnixMilli()
 	var templateId int64
@@ -709,7 +740,22 @@ func (p *HandlerProject) projectTemplateDelete(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "code无效"))
 		return
 	}
+	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	// 数据隔离：只有模板创建者或系统管理员才能删除模板
+	var tmpl struct {
+		MemberCode int64 `gorm:"column:member_code"`
+		IsSystem   int   `gorm:"column:is_system"`
+	}
+	if err := db.Table("ms_project_template").Where("id=?", templateId).First(&tmpl).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "模板不存在"))
+		return
+	}
+	if tmpl.MemberCode != memberId && tmpl.IsSystem != 1 {
+		// 非创建者且非系统模板，检查是否是系统管理员
+		c.JSON(http.StatusOK, result.Fail(403, "无权限删除此模板"))
+		return
+	}
 	// 删除关联的任务阶段模板
 	_ = db.Table("ms_task_stages_template").Where("project_template_code = ?", templateId).Delete(nil).Error
 	// 删除项目模板
@@ -881,70 +927,92 @@ func (p *HandlerProject) analysis(c *gin.Context) {
 	result := &common.Result{}
 	projectCode := c.PostForm("projectCode")
 	memberId := c.GetInt64("memberId")
+	orgCode := orgCodeFromContext(c)
 	db := gorms.GetDB().WithContext(c.Request.Context())
 
 	// 如果没有传入 projectCode，返回全局数据分析
 	if projectCode == "" {
-		// 统计用户参与的项目数量
+		// 统计用户参与的、当前组织下的项目数量
 		var projectCount int64
-		_ = db.Model(&projectMemberRow{}).Where("member_code=?", memberId).Count(&projectCount)
+		projectCountQuery := db.Table("ms_project_member pm").
+			Joins("join ms_project p on p.id=pm.project_code").
+			Where("pm.member_code=?", memberId)
+		if orgCode != 0 {
+			projectCountQuery = projectCountQuery.Where("p.organization_code=?", orgCode)
+		}
+		projectCountQuery.Where("p.deleted=0").Count(&projectCount)
 
 		// 统计本月新建项目数
 		firstOfMonth := time.Now().AddDate(0, 0, -time.Now().Day()+1).Truncate(24 * time.Hour)
 		var monthProjectCount int64
-		_ = db.Table("ms_project p").
+		monthQuery := db.Table("ms_project p").
 			Joins("join ms_project_member pm on pm.project_code=p.id").
-			Where("pm.member_code=? and p.create_time >= ? and p.deleted=0", memberId, firstOfMonth.UnixMilli()).
-			Count(&monthProjectCount)
+			Where("pm.member_code=? and p.create_time >= ? and p.deleted=0", memberId, firstOfMonth.UnixMilli())
+		if orgCode != 0 {
+			monthQuery = monthQuery.Where("p.organization_code=?", orgCode)
+		}
+		_ = monthQuery.Count(&monthProjectCount)
 
-		// 统计用户的任务总数
+		// 统计用户的任务总数（当前组织）
 		var taskCount int64
-		_ = db.Table("ms_task t").
+		taskQuery := db.Table("ms_task t").
 			Joins("join ms_project_member pm on pm.project_code=t.project_code").
-			Where("pm.member_code=? and t.deleted=0", memberId).
-			Count(&taskCount)
+			Joins("join ms_project p on p.id=pm.project_code").
+			Where("pm.member_code=? and t.deleted=0", memberId)
+		if orgCode != 0 {
+			taskQuery = taskQuery.Where("p.organization_code=?", orgCode)
+		}
+		_ = taskQuery.Count(&taskCount)
 
-		// 统计已完成的任务数
+		// 统计已完成的任务数（当前组织）
 		var taskDoneCount int64
-		_ = db.Table("ms_task t").
+		taskDoneQuery := db.Table("ms_task t").
 			Joins("join ms_project_member pm on pm.project_code=t.project_code").
-			Where("pm.member_code=? and t.deleted=0 and t.done=1", memberId).
-			Count(&taskDoneCount)
+			Joins("join ms_project p on p.id=pm.project_code").
+			Where("pm.member_code=? and t.deleted=0 and t.done=1", memberId)
+		if orgCode != 0 {
+			taskDoneQuery = taskDoneQuery.Where("p.organization_code=?", orgCode)
+		}
+		_ = taskDoneQuery.Count(&taskDoneCount)
 
-		// 统计逾期任务数
+		// 统计逾期任务数（当前组织）
 		var taskOverdueCount int64
 		now := time.Now().UnixMilli()
-		_ = db.Table("ms_task t").
+		overdueQuery := db.Table("ms_task t").
 			Joins("join ms_project_member pm on pm.project_code=t.project_code").
-			Where("pm.member_code=? and t.deleted=0 and t.done=0 and t.end_time > 0 and t.end_time < ?", memberId, now).
-			Count(&taskOverdueCount)
+			Joins("join ms_project p on p.id=pm.project_code").
+			Where("pm.member_code=? and t.deleted=0 and t.done=0 and t.end_time > 0 and t.end_time < ?", memberId, now)
+		if orgCode != 0 {
+			overdueQuery = overdueQuery.Where("p.organization_code=?", orgCode)
+		}
+		_ = overdueQuery.Count(&taskOverdueCount)
 
 		// 计算完成进度
 		var projectSchedule float64
 		if taskCount > 0 {
-			projectSchedule = float64(taskDoneCount) / float64(taskCount) * 100
+			projectSchedule = math.Round(float64(taskDoneCount)/float64(taskCount)*10000) / 100
 		}
 
 		// 计算逾期率
 		var taskOverduePercent float64
 		if taskCount > 0 {
-			taskOverduePercent = float64(taskOverdueCount) / float64(taskCount) * 100
+			taskOverduePercent = math.Round(float64(taskOverdueCount)/float64(taskCount)*10000) / 100
 		}
 
-		// 生成项目列表（按月分组）
+		// 生成项目列表（按月分组，当前组织）
 		projectList := make([]gin.H, 0)
 		rows := make([]struct {
 			Month string
 			Count int64
 		}, 0)
-		_ = db.Table("ms_project p").
+		projMonthQuery := db.Table("ms_project p").
 			Joins("join ms_project_member pm on pm.project_code=p.id").
 			Select("DATE_FORMAT(FROM_UNIXTIME(p.create_time/1000), '%Y-%m') as month, count(*) as count").
-			Where("pm.member_code=? and p.deleted=0", memberId).
-			Group("month").
-			Order("month desc").
-			Limit(12).
-			Scan(&rows).Error
+			Where("pm.member_code=? and p.deleted=0", memberId)
+		if orgCode != 0 {
+			projMonthQuery = projMonthQuery.Where("p.organization_code=?", orgCode)
+		}
+		_ = projMonthQuery.Group("month").Order("month desc").Limit(12).Scan(&rows).Error
 		for _, r := range rows {
 			projectList = append(projectList, gin.H{
 				"日期": r.Month,
@@ -952,20 +1020,21 @@ func (p *HandlerProject) analysis(c *gin.Context) {
 			})
 		}
 
-		// 生成任务列表（按月分组）
+		// 生成任务列表（按月分组，当前组织）
 		taskList := make([]gin.H, 0)
 		taskRows := make([]struct {
 			Month string
 			Count int64
 		}, 0)
-		_ = db.Table("ms_task t").
+		taskMonthQuery := db.Table("ms_task t").
 			Joins("join ms_project_member pm on pm.project_code=t.project_code").
+			Joins("join ms_project p on p.id=pm.project_code").
 			Select("DATE_FORMAT(FROM_UNIXTIME(t.create_time/1000), '%Y-%m') as month, count(*) as count").
-			Where("pm.member_code=? and t.deleted=0", memberId).
-			Group("month").
-			Order("month desc").
-			Limit(12).
-			Scan(&taskRows).Error
+			Where("pm.member_code=? and t.deleted=0", memberId)
+		if orgCode != 0 {
+			taskMonthQuery = taskMonthQuery.Where("p.organization_code=?", orgCode)
+		}
+		_ = taskMonthQuery.Group("month").Order("month desc").Limit(12).Scan(&taskRows).Error
 		for _, r := range taskRows {
 			taskList = append(taskList, gin.H{
 				"日期": r.Month,
@@ -973,21 +1042,22 @@ func (p *HandlerProject) analysis(c *gin.Context) {
 			})
 		}
 
-		// 执行者分布
+		// 执行者分布（当前组织）
 		executorList := make([]gin.H, 0)
 		execRows := make([]struct {
 			Name  string
 			Count int64
 		}, 0)
-		_ = db.Table("ms_task t").
+		execQuery := db.Table("ms_task t").
 			Joins("join ms_project_member pm on pm.project_code=t.project_code").
+			Joins("join ms_project p on p.id=pm.project_code").
 			Joins("left join ms_member m on m.id=t.assign_to").
 			Select("coalesce(m.name, '未指派') as name, count(*) as count").
-			Where("pm.member_code=? and t.deleted=0", memberId).
-			Group("m.id, m.name").
-			Order("count desc").
-			Limit(10).
-			Scan(&execRows).Error
+			Where("pm.member_code=? and t.deleted=0", memberId)
+		if orgCode != 0 {
+			execQuery = execQuery.Where("p.organization_code=?", orgCode)
+		}
+		_ = execQuery.Group("m.id, m.name").Order("count desc").Limit(10).Scan(&execRows).Error
 		for _, r := range execRows {
 			executorList = append(executorList, gin.H{
 				"name":  r.Name,
@@ -1060,6 +1130,11 @@ func (p *HandlerProject) analysis(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "projectCode无效"))
 		return
 	}
+	// 数据隔离：只有项目成员才能查看项目分析
+	if !authz.IsProjectMember(db, memberId, projectId) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
 	// 查询项目基本信息
 	var project projectRow
 	if err := db.Where("id=?", projectId).First(&project).Error; err != nil {
@@ -1106,6 +1181,12 @@ func (p *HandlerProject) projectStats(c *gin.Context) {
 	}
 
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	// 数据隔离：只有项目成员才能查看项目统计
+	memberId := c.GetInt64("memberId")
+	if !authz.IsProjectMember(db, memberId, projectId) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UnixMilli()
 	todayEnd := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location()).UnixMilli()
@@ -1155,6 +1236,12 @@ func (p *HandlerProject) projectReport(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	// 数据隔离：只有项目成员才能查看项目报告
+	memberId := c.GetInt64("memberId")
+	if !authz.IsProjectMember(db, memberId, projectId) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
 
 	// 获取项目基本信息
 	var project projectRow
@@ -1164,74 +1251,119 @@ func (p *HandlerProject) projectReport(c *gin.Context) {
 	}
 
 	// 计算燃尽图数据
-	// 1. 确定时间范围：从项目创建日期到当前日期
+	// 1. 确定时间范围：从项目创建日期到当前日期，最多显示60天
 	createTime := time.UnixMilli(project.CreateTime)
 	now := time.Now()
-	
-	// 计算总天数
+
 	startDate := time.Date(createTime.Year(), createTime.Month(), createTime.Day(), 0, 0, 0, 0, createTime.Location())
 	endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	totalDays := int(endDate.Sub(startDate).Hours()/24) + 1
+	// 限制最多60天，避免图表数据过多
+	if totalDays > 60 {
+		startDate = endDate.AddDate(0, 0, -59)
+		totalDays = 60
+	}
 
-	// 2. 获取项目总任务数
-	var totalTasks int64
-	_ = db.Table("ms_task").Where("project_code=? AND deleted=0", projectId).Count(&totalTasks).Error
-
-	// 3. 查询每日已完成的任务数
-	type DailyDone struct {
+	// 2. 查询每日新建任务数（按 create_time 分组）
+	type DailyCount struct {
 		Date string `gorm:"column:date"`
 		Cnt  int64  `gorm:"column:cnt"`
 	}
-	var dailyDoneList []DailyDone
-	
-	// 查询任务完成日志，按日期分组
-	// 由于ms_task可能没有done_time字段，我们简化处理：统计每日的累计完成数
-	// 这里用ms_task_done_log或类似表，如果没有，用简化方案：查当前未完成数，反推
+	var dailyCreateList []DailyCount
 	_ = db.Table("ms_task").
-		Select("DATE(FROM_UNIXTIME(create_time/1000)) as date, COUNT(*) as cnt").
-		Where("project_code=? AND deleted=0 AND done=1", projectId).
+		Select("DATE_FORMAT(FROM_UNIXTIME(create_time/1000),'%Y-%m-%d') as date, COUNT(*) as cnt").
+		Where("project_code=? AND deleted=0", projectId).
 		Where("create_time >= ?", startDate.UnixMilli()).
-		Group("DATE(FROM_UNIXTIME(create_time/1000))").
+		Group("DATE_FORMAT(FROM_UNIXTIME(create_time/1000),'%Y-%m-%d')").
+		Order("date").
+		Scan(&dailyCreateList).Error
+
+	// 3. 查询每日完成任务数（按 done_time 分组，优先使用 done_time，回退到事件日志）
+	var dailyDoneList []DailyCount
+	// 优先使用 done_time 字段
+	_ = db.Table("ms_task").
+		Select("DATE_FORMAT(FROM_UNIXTIME(done_time/1000),'%Y-%m-%d') as date, COUNT(*) as cnt").
+		Where("project_code=? AND deleted=0 AND done=1 AND done_time > 0", projectId).
+		Where("done_time >= ?", startDate.UnixMilli()).
+		Group("DATE_FORMAT(FROM_UNIXTIME(done_time/1000),'%Y-%m-%d')").
 		Order("date").
 		Scan(&dailyDoneList).Error
 
-	// 4. 构建燃尽图数据
+	// 如果 done_time 数据为空（旧数据没有该字段），回退使用事件日志
+	if len(dailyDoneList) == 0 {
+		_ = db.Table("ms_project_event").
+			Select("DATE_FORMAT(FROM_UNIXTIME(create_time/1000),'%Y-%m-%d') as date, COUNT(*) as cnt").
+			Where("project_code=? AND event_type='task:done'", projectId).
+			Where("create_time >= ?", startDate.UnixMilli()).
+			Group("DATE_FORMAT(FROM_UNIXTIME(create_time/1000),'%Y-%m-%d')").
+			Order("date").
+			Scan(&dailyDoneList).Error
+	}
+
+	// 4. 查询项目创建前的已有任务数（用于燃尽图起始值）
+	var tasksBeforeStart int64
+	_ = db.Table("ms_task").
+		Where("project_code=? AND deleted=0 AND create_time < ?", projectId, startDate.UnixMilli()).
+		Count(&tasksBeforeStart).Error
+
+	// 5. 查询项目创建前的已完成任务数
+	var doneBeforeStart int64
+	_ = db.Table("ms_task").
+		Where("project_code=? AND deleted=0 AND done=1 AND done_time > 0 AND done_time < ?", projectId, startDate.UnixMilli()).
+		Count(&doneBeforeStart).Error
+
+	// 6. 构建燃尽图数据
 	dates := make([]string, 0, totalDays)
 	undoneTask := make([]int, 0, totalDays)
 	baseLineList := make([]int, 0, totalDays)
 
-	// 按天遍历
+	createMap := make(map[string]int64)
+	for _, d := range dailyCreateList {
+		createMap[d.Date] = d.Cnt
+	}
 	doneMap := make(map[string]int64)
 	for _, d := range dailyDoneList {
 		doneMap[d.Date] = d.Cnt
 	}
 
-	cumulativeDone := int64(0)
+	// 累计值
+	cumulativeCreated := tasksBeforeStart
+	cumulativeDone := doneBeforeStart
+
+	// 计算初始总任务数（用于理想基线）
+	var finalTotalTasks int64
+	_ = db.Table("ms_task").Where("project_code=? AND deleted=0", projectId).Count(&finalTotalTasks).Error
+
 	for i := 0; i < totalDays; i++ {
 		currentDate := startDate.AddDate(0, 0, i)
 		dateStr := currentDate.Format("2006-01-02")
 		dates = append(dates, dateStr)
 
-		// 累计完成任务
+		// 累计新建
+		if cnt, ok := createMap[dateStr]; ok {
+			cumulativeCreated += cnt
+		}
+
+		// 累计完成
 		if cnt, ok := doneMap[dateStr]; ok {
 			cumulativeDone += cnt
 		}
 
-		// 剩余未完成
-		undone := int(totalTasks - cumulativeDone)
+		// 剩余未完成 = 累计新建 - 累计完成
+		undone := int(cumulativeCreated - cumulativeDone)
 		if undone < 0 {
 			undone = 0
 		}
 		undoneTask = append(undoneTask, undone)
 
-		// 理想基线（线性递减）
+		// 理想基线（线性递减到0）
 		ideal := 0
 		if totalDays <= 1 {
 			if i == 0 {
-				ideal = int(totalTasks)
+				ideal = int(cumulativeCreated)
 			}
 		} else {
-			ideal = int(float64(totalTasks) * (1.0 - float64(i)/float64(totalDays-1)))
+			ideal = int(float64(cumulativeCreated) * (1.0 - float64(i)/float64(totalDays-1)))
 			if i == totalDays-1 {
 				ideal = 0
 			}
@@ -1347,10 +1479,15 @@ func (p *HandlerProject) taskSelfList(c *gin.Context) {
 	page := &model.Page{}
 	page.Bind(c)
 	memberId := c.GetInt64("memberId")
+	orgCode := orgCodeFromContext(c)
 	db := gorms.GetDB().WithContext(c.Request.Context())
 	query := db.Table("ms_task t").
 		Joins("join ms_project_member pm on pm.project_code=t.project_code").
+		Joins("join ms_project p on p.id=pm.project_code").
 		Where("pm.member_code=? and t.deleted=0", memberId)
+	if orgCode != 0 {
+		query = query.Where("p.organization_code=?", orgCode)
+	}
 	var total int64
 	_ = query.Count(&total).Error
 	var rows []struct {
@@ -1384,8 +1521,7 @@ func (p *HandlerProject) getLogBySelfProject(c *gin.Context) {
 	page.Bind(c)
 	memberId := c.GetInt64("memberId")
 	projectCode := c.PostForm("projectCode")
-	orgVal, _ := c.Get("organizationCode")
-	orgCode := orgCodeToInt64(orgVal)
+	orgCode := orgCodeFromContext(c)
 	db := gorms.GetDB().WithContext(c.Request.Context())
 
 	projectQuery := db.Table("ms_project_member pm").
@@ -1570,6 +1706,7 @@ func (p *HandlerProject) eventsMyList(c *gin.Context) {
 	page := &model.Page{}
 	page.Bind(c)
 	memberId := c.GetInt64("memberId")
+	orgCode := orgCodeFromContext(c)
 	db := gorms.GetDB().WithContext(c.Request.Context())
 	var rows []struct {
 		Id          int64  `gorm:"column:id"`
@@ -1581,7 +1718,11 @@ func (p *HandlerProject) eventsMyList(c *gin.Context) {
 	var total int64
 	query := db.Table("ms_project_events e").
 		Joins("join ms_project_events_member m on m.events_id=e.id").
+		Joins("join ms_project p on p.id=e.project_code").
 		Where("m.member_id=? and e.deleted=0", memberId)
+	if orgCode != 0 {
+		query = query.Where("p.organization_code=?", orgCode)
+	}
 	_ = query.Count(&total).Error
 	_ = query.Select("e.id, e.title, e.begin_time, e.end_time, e.project_code").
 		Order("e.id desc").
@@ -1671,8 +1812,7 @@ func (p *HandlerProject) saveAsTemplate(c *gin.Context) {
 	}
 
 	memberId := c.GetInt64("memberId")
-	orgVal, _ := c.Get("organizationCode")
-	orgCode := orgCodeToInt64(orgVal)
+	orgCode := orgCodeFromContext(c)
 	db := gorms.GetDB().WithContext(c.Request.Context())
 	now := time.Now().UnixMilli()
 
@@ -1683,6 +1823,7 @@ func (p *HandlerProject) saveAsTemplate(c *gin.Context) {
 	// 创建模板
 	type templateRow struct {
 		Id               int64  `gorm:"primaryKey;autoIncrement"`
+		Code             string `gorm:"column:code"`
 		Name             string
 		Description      string
 		Cover            string
@@ -1691,7 +1832,9 @@ func (p *HandlerProject) saveAsTemplate(c *gin.Context) {
 		MemberCode       int64
 		IsSystem         int
 	}
+	templateCode := generateProjectTemplateCode()
 	newTemplate := &templateRow{
+		Code:             templateCode,
 		Name:             name,
 		Description:      description,
 		Cover:            project.Cover,
@@ -1723,7 +1866,7 @@ func (p *HandlerProject) saveAsTemplate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result.Success(gin.H{
-		"code":         codecs.EncryptInt64(newTemplate.Id),
+		"code":         newTemplate.Code,
 		"name":         name,
 		"stages_count": len(stages),
 	}))
@@ -1761,4 +1904,61 @@ func (p *HandlerProject) uploadTemplateCover(c *gin.Context) {
 
 func New() *HandlerProject {
 	return &HandlerProject{}
+}
+
+// uploadCover 上传项目封面
+func (p *HandlerProject) uploadCover(c *gin.Context) {
+	result := &common.Result{}
+	memberId := c.GetInt64("memberId")
+
+	file, err := c.FormFile("cover")
+	if err != nil {
+		c.JSON(http.StatusOK, result.Fail(400, "请选择封面图片"))
+		return
+	}
+
+	// 创建上传目录
+	uploadDir := "uploads/covers"
+	if err := createDirIfNotExists(uploadDir); err != nil {
+		c.JSON(http.StatusOK, result.Fail(500, "创建上传目录失败"))
+		return
+	}
+
+	// 生成文件名
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	filename := fmt.Sprintf("%d_%d%s", time.Now().UnixNano(), memberId, ext)
+	filePath := uploadDir + "/" + filename
+
+	// 保存文件
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		c.JSON(http.StatusOK, result.Fail(500, "上传失败"))
+		return
+	}
+
+	// 生成访问URL
+	coverUrl := "/" + strings.ReplaceAll(filePath, "\\", "/")
+
+	// 如果有项目code参数，更新项目封面
+	code := c.PostForm("code")
+	if code != "" {
+		pid, err := codecs.DecryptInt64(code)
+		if err == nil && pid > 0 {
+			db := gorms.GetDB()
+			// 数据隔离：只有项目成员才能修改封面
+			if !authz.IsProjectMember(db, memberId, pid) {
+				c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
+				return
+			}
+			_ = db.Model(&projectRow{}).Where("id=?", pid).Update("cover", coverUrl).Error
+		}
+	}
+
+	c.JSON(http.StatusOK, result.Success(gin.H{
+		"url": coverUrl,
+	}))
+}
+
+// createDirIfNotExists 创建目录（如果不存在）
+func createDirIfNotExists(dir string) error {
+	return os.MkdirAll(dir, 0755)
 }

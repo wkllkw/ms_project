@@ -11,13 +11,19 @@ export default {
             const target = typeof page === 'string' ? page : page.path || page.name;
             const current = this.$route.path;
             if (typeof page === 'string' && page === current) return;
+            const navigationErrors = new Set([
+                'NavigationDuplicated',
+                'NavigationCancelled',
+                'NavigationRedirected',
+                'NavigationAborted',
+            ]);
             if (replace) {
                 this.$router.replace(page).catch(err => {
-                    if (err.name !== 'NavigationDuplicated') throw err;
+                    if (!err || !navigationErrors.has(err.name)) throw err;
                 });
             } else {
                 this.$router.push(page).catch(err => {
-                    if (err.name !== 'NavigationDuplicated') throw err;
+                    if (!err || !navigationErrors.has(err.name)) throw err;
                 });
             }
         },
@@ -28,7 +34,7 @@ export default {
                 home = home + '/' + currentOrganization.code;
             }
             if (this.$route.path !== home) {
-                this.$router.push(home);
+                this.$router.push(home).catch(() => {});
             }
         },
     }

@@ -54,7 +54,7 @@
                             </a-list>
                             <div class="footer-action">
                                 <a class="item muted" @click="setRead('notice')">清空通知</a>
-                                <a class="item muted" @click="()=>{$router.push('/notify/notice')}">查看更多</a>
+                                <a class="item muted" @click="()=>{$router.push('/notify/notice').catch(()=>{})}">查看更多</a>
                             </div>
                         </template>
                         <template v-else>
@@ -153,7 +153,6 @@
                 } else if (val.action === 'task' || val.action === 'events') {
                     this.init();
                     const permission = showMsgNotification(val.title, val.msg, {icon: val.data.notify.avatar});
-                    console.log(permission);
                     if (permission === false) {
                         notice(val, 'notice', 'info', 10);
                     }
@@ -193,7 +192,7 @@
                 switch (key) {
                     default:
                         this.showNotice = false;
-                        this.$router.push('/notify/notice');
+                        this.$router.push('/notify/notice').catch(() => {});
                 }
             },
             getTasks() {
@@ -209,7 +208,7 @@
                 this.showNotice = false;
                 if (message.action === 'task') {
                     setReadied(JSON.stringify([message.id]));
-                    this.$router.push(`/project/space/task/${sendData.project_code}/detail/${sendData.code}`);
+                    this.$router.push(`/project/space/task/${sendData.project_code}/detail/${sendData.code}`).catch(() => {});
                 }
                 this.init();
             },

@@ -17,6 +17,7 @@ type Config struct {
 	EtcdConfig  *EtcdConfig
 	MysqlConfig *MysqlConfig
 	JwtConfig   *JwtConfig
+	UserAddr    string
 }
 
 type ServerConfig struct {
@@ -65,6 +66,7 @@ func InitConfig() *Config {
 	conf.InitZapLog()
 	conf.ReadGrpcConfig()
 	conf.ReadEtcdConfig()
+	conf.ReadUserAddr()
 	conf.InitMysqlConfig()
 	conf.InitJwtConfig()
 	return conf
@@ -119,6 +121,10 @@ func (c *Config) ReadEtcdConfig() {
 	}
 	ec.Addrs = addrs
 	c.EtcdConfig = ec
+}
+
+func (c *Config) ReadUserAddr() {
+	c.UserAddr = c.viper.GetString("rpc.userAddr")
 }
 func (c *Config) InitMysqlConfig() {
 	mc := &MysqlConfig{

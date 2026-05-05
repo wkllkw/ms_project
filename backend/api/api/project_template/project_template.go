@@ -1,11 +1,15 @@
 package project_template
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"test.com/project-api/internal/database/gorms"
+	"test.com/project-api/pkg/codecs"
 	"test.com/project-api/pkg/model"
 	common "test.com/project-common"
 )
@@ -35,11 +39,11 @@ func (*projectTemplateRow) TableName() string {
 
 // taskStagesTemplateRow 任务阶段模板表结构
 type taskStagesTemplateRow struct {
-	Id                 int64  `gorm:"primaryKey;autoIncrement"`
-	Name               string `gorm:"column:name"`
-	ProjectTemplateCode string `gorm:"column:project_template_code"`
-	Sort               int    `gorm:"column:sort"`
-	CreateTime         int64  `gorm:"column:create_time"`
+	Id                  int64  `gorm:"primaryKey;autoIncrement"`
+	Name                string `gorm:"column:name"`
+	ProjectTemplateCode int64  `gorm:"column:project_template_code"`
+	Sort                int    `gorm:"column:sort"`
+	CreateTime          int64  `gorm:"column:create_time"`
 }
 
 func (*taskStagesTemplateRow) TableName() string {
@@ -48,19 +52,16 @@ func (*taskStagesTemplateRow) TableName() string {
 
 // generateTemplateCode 生成模板编码
 func generateTemplateCode() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, 16)
-	for i := range b {
-		b[i] = charset[i%len(charset)]
-	}
-	return "tpl_" + string(b)
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return "tpl_" + hex.EncodeToString(b)
 }
 
 // getTemplateList 获取模板列表
 func (h *HandlerProjectTemplate) getTemplateList(c *gin.Context) {
 	result := &common.Result{}
-	_ = c.GetInt64("memberId") // memberId 暂未使用
-	orgCode, _ := c.Get("organizationCode")
+	memberId := c.GetInt64("memberId")
+	orgCode := orgCodeFromContext(c)
 
 	page := &model.Page{}
 	page.Bind(c)
@@ -68,6 +69,14 @@ func (h *HandlerProjectTemplate) getTemplateList(c *gin.Context) {
 	db := gorms.GetDB().WithContext(c.Request.Context())
 
 	viewType := c.PostForm("viewType") // -1:全部, 0:组织模板, 1:系统模板
+
+	// 查找当前用户所属部门的成员ID列表（用于自定义模板过滤）
+	var deptMemberIds []int64
+	var deptIds []int64
+	_ = db.Table("ms_department_member").Select("DISTINCT department_id").Where("member_id=?", memberId).Scan(&deptIds).Error
+	if len(deptIds) > 0 {
+		_ = db.Table("ms_department_member").Select("DISTINCT member_id").Where("department_id IN ?", deptIds).Scan(&deptMemberIds).Error
+	}
 
 	var templates []projectTemplateRow
 	var total int64
@@ -78,11 +87,18 @@ func (h *HandlerProjectTemplate) getTemplateList(c *gin.Context) {
 		// 只看系统模板
 		query = query.Where("is_system = 1")
 	} else if viewType == "0" {
-		// 只看组织模板
+		// 只看组织模板 - 添加部门过滤：只显示用户所属部门成员创建的模板
 		query = query.Where("organization_code = ? AND is_system = 0", orgCode)
+		if len(deptMemberIds) > 0 {
+			query = query.Where("member_code IN ?", deptMemberIds)
+		}
 	} else {
-		// 全部：系统模板 + 组织模板
-		query = query.Where("organization_code = ? OR is_system = 1", orgCode)
+		// 全部：系统模板 + 组织模板（组织模板添加部门过滤）
+		if len(deptMemberIds) > 0 {
+			query = query.Where("organization_code = ? AND is_system = 0 AND member_code IN ? OR is_system = 1", orgCode, deptMemberIds)
+		} else {
+			query = query.Where("organization_code = ? OR is_system = 1", orgCode)
+		}
 	}
 
 	// 获取总数
@@ -103,7 +119,7 @@ func (h *HandlerProjectTemplate) getTemplateList(c *gin.Context) {
 	for _, template := range templates {
 		var stages []taskStagesTemplateRow
 		db.Table("ms_task_stages_template").
-			Where("project_template_code = ?", template.Code).
+			Where("project_template_code = ?", template.Id).
 			Order("sort desc, id asc").
 			Find(&stages)
 
@@ -136,7 +152,7 @@ func (h *HandlerProjectTemplate) getTemplateList(c *gin.Context) {
 func (h *HandlerProjectTemplate) createTemplate(c *gin.Context) {
 	result := &common.Result{}
 	memberId := c.GetInt64("memberId")
-	orgCode, _ := c.Get("organizationCode")
+	orgCode := orgCodeFromContext(c)
 
 	name := c.PostForm("name")
 	description := c.PostForm("description")
@@ -156,7 +172,7 @@ func (h *HandlerProjectTemplate) createTemplate(c *gin.Context) {
 		Description:      description,
 		Cover:            cover,
 		MemberCode:       memberId,
-		OrganizationCode: orgCodeToInt64(orgCode),
+		OrganizationCode: orgCode,
 		IsSystem:         0,
 		CreateTime:       time.Now().UnixMilli(),
 	}
@@ -170,16 +186,17 @@ func (h *HandlerProjectTemplate) createTemplate(c *gin.Context) {
 	defaultStages := []string{"待办", "进行中", "已完成"}
 	for i, stageName := range defaultStages {
 		stage := &taskStagesTemplateRow{
-			Name:               stageName,
-			ProjectTemplateCode: template.Code,
-			Sort:               len(defaultStages) - i,
-			CreateTime:         time.Now().UnixMilli(),
+			Name:                stageName,
+			ProjectTemplateCode: template.Id,
+			Sort:                len(defaultStages) - i,
+			CreateTime:          time.Now().UnixMilli(),
 		}
 		db.Table("ms_task_stages_template").Create(stage)
 	}
 
 	c.JSON(http.StatusOK, result.Success(gin.H{
 		"message": "制作模板成功",
+		"code":    template.Code,
 		"data":    template,
 	}))
 }
@@ -270,7 +287,7 @@ func (h *HandlerProjectTemplate) deleteTemplate(c *gin.Context) {
 
 	// 删除模板的任务阶段
 	db.Table("ms_task_stages_template").
-		Where("project_template_code = ?", code).
+		Where("project_template_code = ?", template.Id).
 		Delete(nil)
 
 	// 删除模板
@@ -308,21 +325,21 @@ func (h *HandlerProjectTemplate) uploadCover(c *gin.Context) {
 	}))
 }
 
-// orgCodeToInt64 辅助函数：将organizationCode转换为int64
-func orgCodeToInt64(v interface{}) int64 {
-	switch t := v.(type) {
+// orgCodeFromContext 从 gin 上下文中获取解密后的 organizationCode
+func orgCodeFromContext(c *gin.Context) int64 {
+	orgVal, _ := c.Get("organizationCode")
+	switch t := orgVal.(type) {
 	case int64:
 		return t
 	case int:
 		return int64(t)
 	case string:
-		var result int64
-		for _, c := range t {
-			if c >= '0' && c <= '9' {
-				result = result*10 + int64(c-'0')
-			}
+		decrypted, err := codecs.DecryptInt64(t)
+		if err == nil && decrypted > 0 {
+			return decrypted
 		}
-		return result
+		i, _ := strconv.ParseInt(t, 10, 64)
+		return i
 	default:
 		return 0
 	}

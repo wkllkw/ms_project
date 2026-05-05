@@ -33,7 +33,7 @@
                         </div>
                     </div>
                 </div>
-                <!-- 动态装饰元素 -->
+                <!-- 装饰元素（隐藏） -->
                 <div class="brand-decoration">
                     <div class="circle circle-1"></div>
                     <div class="circle circle-2"></div>
@@ -94,10 +94,10 @@
             position: relative;
         }
 
-        // ========== 左侧品牌展示区 ==========
+        // ========== 左侧品牌展示区 - 暖灰底 + 微装饰 ==========
         .brand-side {
             flex: 1;
-            background: linear-gradient(135deg, #1890ff 0%, #096dd9 40%, #0050b3 100%);
+            background: #f7f5f2;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -105,35 +105,58 @@
             overflow: hidden;
             min-height: 100vh;
 
+            // 微妙的渐变装饰
+            &::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                right: -20%;
+                width: 70%;
+                height: 100%;
+                background: radial-gradient(ellipse, rgba(58, 130, 248, 0.04) 0%, transparent 70%);
+                pointer-events: none;
+            }
+
+            &::after {
+                content: '';
+                position: absolute;
+                bottom: -30%;
+                left: -10%;
+                width: 50%;
+                height: 60%;
+                background: radial-gradient(ellipse, rgba(82, 196, 26, 0.03) 0%, transparent 70%);
+                pointer-events: none;
+            }
+
             .brand-content {
                 position: relative;
                 z-index: 2;
                 padding: 60px 48px;
-                max-width: 480px;
+                max-width: 440px;
+                animation: fadeInUp 0.5s ease-out;
             }
 
             .brand-logo {
                 margin-bottom: 24px;
 
                 .brand-logo-img {
-                    width: 72px;
-                    height: 72px;
-                    filter: brightness(0) invert(1);
-                    opacity: 0.95;
+                    width: 56px;
+                    height: 56px;
+                    opacity: 0.85;
                 }
             }
 
             .brand-title {
-                font-size: 42px;
+                font-size: 36px;
                 font-weight: 700;
-                color: #fff;
+                color: rgba(0, 0, 0, 0.85);
                 margin-bottom: 12px;
                 letter-spacing: -0.5px;
             }
 
             .brand-desc {
-                font-size: 16px;
-                color: rgba(255, 255, 255, 0.75);
+                font-size: 15px;
+                color: rgba(0, 0, 0, 0.45);
                 margin-bottom: 48px;
                 line-height: 1.6;
             }
@@ -142,32 +165,38 @@
                 .feature-item {
                     display: flex;
                     align-items: flex-start;
-                    margin-bottom: 28px;
-                    animation: fadeInUp 0.6s ease-out both;
+                    margin-bottom: 24px;
+                    transition: transform 0.2s ease;
 
-                    &:nth-child(1) { animation-delay: 0.2s; }
-                    &:nth-child(2) { animation-delay: 0.4s; }
-                    &:nth-child(3) { animation-delay: 0.6s; }
+                    &:hover {
+                        transform: translateX(4px);
+
+                        .feature-icon {
+                            background: rgba(58, 130, 248, 0.08);
+                            color: #3a82f8;
+                        }
+                    }
 
                     .feature-icon {
-                        font-size: 28px;
-                        color: rgba(255, 255, 255, 0.9);
-                        margin-right: 16px;
+                        font-size: 24px;
+                        color: rgba(0, 0, 0, 0.25);
+                        margin-right: 14px;
                         margin-top: 2px;
-                        background: rgba(255, 255, 255, 0.15);
-                        padding: 10px;
-                        border-radius: 12px;
+                        background: rgba(0, 0, 0, 0.04);
+                        padding: 8px;
+                        border-radius: 8px;
+                        transition: background 0.2s ease, color 0.2s ease;
                     }
 
                     .feature-text {
                         h4 {
-                            color: #fff;
-                            font-size: 16px;
+                            color: rgba(0, 0, 0, 0.75);
+                            font-size: 15px;
                             font-weight: 600;
                             margin-bottom: 4px;
                         }
                         p {
-                            color: rgba(255, 255, 255, 0.65);
+                            color: rgba(0, 0, 0, 0.4);
                             font-size: 13px;
                             margin: 0;
                         }
@@ -175,64 +204,82 @@
                 }
             }
 
-            // 装饰动画圆
+            // 装饰圆圈 - 恢复但极简化
             .brand-decoration {
+                display: block;
                 position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
+                inset: 0;
                 pointer-events: none;
                 z-index: 1;
 
                 .circle {
                     position: absolute;
                     border-radius: 50%;
-                    background: rgba(255, 255, 255, 0.06);
+                    border: 1px solid rgba(0, 0, 0, 0.04);
+                }
 
-                    &.circle-1 {
-                        width: 400px;
-                        height: 400px;
-                        top: -120px;
-                        right: -100px;
-                        animation: floatAnimation 8s ease-in-out infinite;
-                    }
+                .circle-1 {
+                    width: 300px;
+                    height: 300px;
+                    top: -80px;
+                    right: -60px;
+                    animation: float1 8s ease-in-out infinite;
+                }
 
-                    &.circle-2 {
-                        width: 250px;
-                        height: 250px;
-                        bottom: -60px;
-                        left: -40px;
-                        animation: floatAnimation 6s ease-in-out infinite reverse;
-                    }
+                .circle-2 {
+                    width: 200px;
+                    height: 200px;
+                    bottom: -40px;
+                    left: -30px;
+                    animation: float2 10s ease-in-out infinite;
+                }
 
-                    &.circle-3 {
-                        width: 150px;
-                        height: 150px;
-                        top: 50%;
-                        right: 10%;
-                        animation: floatAnimation 10s ease-in-out infinite 2s;
-                    }
+                .circle-3 {
+                    width: 120px;
+                    height: 120px;
+                    top: 40%;
+                    right: 10%;
+                    animation: float3 12s ease-in-out infinite;
                 }
             }
         }
 
+        @keyframes float1 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-8px, 12px); }
+        }
+
+        @keyframes float2 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(10px, -8px); }
+        }
+
+        @keyframes float3 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-6px, -10px); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         // ========== 右侧表单区 ==========
         .form-side {
-            flex: 0 0 520px;
+            flex: 0 0 480px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: #fff;
             min-height: 100vh;
-            box-shadow: -8px 0 24px rgba(0, 0, 0, 0.06);
             position: relative;
             z-index: 2;
 
             .form-wrapper {
                 width: 100%;
-                max-width: 400px;
+                max-width: 380px;
                 padding: 40px 48px;
+                animation: fadeInUp 0.4s ease-out 0.1s both;
             }
 
             a {
@@ -241,22 +288,22 @@
 
             .top {
                 text-align: center;
-                margin-bottom: 32px;
+                margin-bottom: 28px;
 
                 .header {
-                    height: 44px;
-                    line-height: 44px;
+                    height: 40px;
+                    line-height: 40px;
 
                     .logo {
-                        height: 40px;
+                        height: 36px;
                         vertical-align: top;
-                        margin-right: 12px;
+                        margin-right: 10px;
                         border-style: none;
                     }
 
                     .title {
-                        font-size: 28px;
-                        color: rgba(0, 0, 0, .85);
+                        font-size: 24px;
+                        color: rgba(0, 0, 0, 0.85);
                         font-weight: 700;
                         position: relative;
                         top: 2px;
@@ -272,33 +319,12 @@
 
             .footer {
                 text-align: center;
-                margin-top: 48px;
+                margin-top: 40px;
 
                 .copyright {
-                    color: rgba(0, 0, 0, 0.35);
-                    font-size: 13px;
+                    color: rgba(0, 0, 0, 0.25);
+                    font-size: 12px;
                 }
-            }
-        }
-
-        // ========== 动画 ==========
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes floatAnimation {
-            0%, 100% {
-                transform: translateY(0) scale(1);
-            }
-            50% {
-                transform: translateY(-20px) scale(1.05);
             }
         }
 
@@ -323,7 +349,7 @@
                 }
 
                 .brand-title {
-                    font-size: 28px;
+                    font-size: 24px;
                 }
 
                 .brand-desc {
@@ -334,7 +360,6 @@
             .form-side {
                 flex: 1;
                 min-height: auto;
-                box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
 
                 .form-wrapper {
                     padding: 32px 24px;
@@ -352,7 +377,7 @@
                 }
 
                 .top .header .title {
-                    font-size: 22px;
+                    font-size: 20px;
                 }
             }
         }

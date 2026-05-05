@@ -20,11 +20,15 @@ func (*RouterFile) Route(r *gin.Engine) {
 	group := r.Group("/project")
 	group.Use(midd.TokenVerify())
 	h := New()
+	// 只读操作：需要 project.list 权限（通过菜单过滤控制）
 	group.POST("/file", h.list)
 	group.POST("/file/read", h.read)
-	group.POST("/file/edit", h.edit)
-	group.POST("/file/uploadFiles", h.uploadFiles)
-	group.POST("/file/recycle", h.recycle)
-	group.POST("/file/recovery", h.recovery)
-	group.POST("/file/delete", h.del)
+	// 文件上传：需要 file:upload 节点
+	group.POST("/file/uploadFiles", midd.NodeVerify("file:upload"), h.uploadFiles)
+	// 文件编辑：需要 file:upload 节点（编辑文件信息属于上传权限范围）
+	group.POST("/file/edit", midd.NodeVerify("file:upload"), h.edit)
+	// 文件删除/回收：需要 file:delete 节点
+	group.POST("/file/recycle", midd.NodeVerify("file:delete"), h.recycle)
+	group.POST("/file/recovery", midd.NodeVerify("file:delete"), h.recovery)
+	group.POST("/file/delete", midd.NodeVerify("file:delete"), h.del)
 }

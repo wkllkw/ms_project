@@ -47,10 +47,12 @@
             userAction(action) {
                 let app = this;
                 if (action.key == 'logout') {
-                    _out();
+                    // 先调用后端登出接口（静默处理错误），再清除本地状态
+                    _out().catch(() => {});
                     app.$store.dispatch('SET_LOGOUT');
+                    app.$router.push('/member/login').catch(() => {});
                 } else if (action.key == 'setting') {
-                    app.$router.push('/account/setting/base');
+                    app.$router.push('/account/setting/base').catch(() => {});
                 } else if (action.key == 'theme') {
                     let theme = 'dark';
                     if (this.theme == theme) {

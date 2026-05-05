@@ -25,6 +25,16 @@
                 <a-tab-pane key="deleted" tab="回收站"></a-tab-pane>
                 <a-button slot="tabBarExtraContent" type="primary" icon="plus" @click="doAction(null,'new')">创建新项目</a-button>
             </a-tabs>
+            <a-alert v-if="selectBy === 'archive'" type="info" showIcon style="margin-bottom: 16px;">
+                <template slot="message">
+                    已归档的项目不会在日常视图中显示，但仍可被搜索和统计收录。您可以随时取消归档以恢复项目。
+                </template>
+            </a-alert>
+            <a-alert v-if="selectBy === 'deleted'" type="warning" showIcon style="margin-bottom: 16px;">
+                <template slot="message">
+                    回收站中的项目可随时恢复或彻底删除，彻底删除后数据将无法恢复，请谨慎操作。
+                </template>
+            </a-alert>
             
             <!-- 批量操作工具栏 -->
             <div class="batch-toolbar" v-if="selectedRowKeys.length > 0 && (selectBy === 'archive' || selectBy === 'deleted')">
@@ -70,7 +80,7 @@
                             <router-link :to="'/project/space/task/' + item.code">{{item.name}}</router-link>
                             <a-tag color="green" class="m-l" v-show="!item.private">公开</a-tag>
                         </div>
-                        <a-avatar slot="avatar" icon="user" :src="item.cover"/>
+                        <a-avatar slot="avatar" icon="appstore" :src="item.cover" style="backgroundColor:#1890ff"/>
                     </a-list-item-meta>
                     <div class="ant-list-item-content">
                         <div class="other-info muted">
@@ -334,8 +344,9 @@
                 this.requestData.selectBy = this.selectBy;
                 app.loading = true;
                 list(app.requestData).then(res => {
-                    app.dataSource = app.dataSource.concat(res.data.list);
-                    app.pagination.total = res.data.total;
+                    const data = res.data || {};
+                    app.dataSource = app.dataSource.concat(data.list || []);
+                    app.pagination.total = data.total || 0;
                     app.showLoadingMore = app.pagination.total > app.dataSource.length;
                     app.loading = false;
                     app.loadingMore = false
@@ -348,7 +359,10 @@
 
             projectTemplates() {
                 projectTemplates({pageSize: 100, viewType: -1}).then(res => {
-                    this.templateList = res.data.list;
+                    const data = res.data || {};
+                    this.templateList = data.list || [];
+                }).catch(() => {
+                    this.templateList = [];
                 });
             },
             onLoadMore() {
@@ -631,7 +645,7 @@
                                     // 使用 taskStagesTemplate API 保存阶段
                                     import('../../../api/taskStagesTemplate').then(module => {
                                         module.doData({
-                                            templateCode: templateCode,
+                                            projectTemplateCode: templateCode,
                                             name: stage.name,
                                             sort: index,
                                         }).then(resolve).catch(resolve);

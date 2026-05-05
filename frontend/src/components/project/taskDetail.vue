@@ -701,10 +701,11 @@
                                                                                     class="task-item"
                                                                                     size="small"
                                                                                     icon="user"
-                                                                                    :src="workTime.member.avatar"
+                                                                                    :src="workTime.member && workTime.member.avatar"
                                                                             ></a-avatar>
                                                                         </a-tooltip>
-                                                                        {{workTime.member.name}}
+                                                                        <template v-if="workTime.member">{{workTime.member.name}}</template>
+                                                                        <template v-else>待认领</template>
                                                                         {{moment(workTime.begin_time).format('MM月DD日 HH:mm')}}开始 工时为
                                                                         {{workTime.num}} 小时
                                                                         <div class="muted"
@@ -767,10 +768,10 @@
                                                             <a-list-item-meta>
                                                                 <a-avatar size="small" slot="avatar" shape="square"
                                                                           icon="link"
-                                                                          :src="item.sourceDetail.file_url"/>
+                                                                          :src="item.url"/>
                                                                 <div slot="title">
                                                                     <a class="muted" target="_blank"
-                                                                       :href="item.sourceDetail.file_url">{{ item.title
+                                                                       :href="item.url">{{ item.title
                                                                         }}</a>
                                                                 </div>
                                                                 <div slot="description">
@@ -778,7 +779,7 @@
                                                                 </div>
                                                             </a-list-item-meta>
                                                             <a class="muted" slot="actions">
-                                                                <span>{{item.sourceDetail.projectName}}</span>
+                                                                <span>{{item.description}}</span>
                                                             </a>
                                                             <a class="muted" slot="actions">
                                                                 <a-dropdown :trigger="['click']"
@@ -791,7 +792,7 @@
                                                                         <a-icon type="down"/>
                                                                     </a>
                                                                     <!--</a-tooltip>-->
-                                                                    <a-menu v-clipboard="item.sourceDetail.file_url"
+                                                                    <a-menu v-clipboard="item.url"
                                                                             @click="doSource($event,item)"
                                                                             class="field-right-menu"
                                                                             slot="overlay">
@@ -862,91 +863,20 @@
                             </div>
                         </div>
                         <div class="log-wrap">
-                            <div class="header">
-                                <a-dropdown :trigger="['click']">
-                                    <a class="text-default">
-                                        所有动态
-                                        <a-icon type="down"/>
-                                    </a>
-                                    <a-menu v-model="taskLogType" class="field-right-menu" slot="overlay"
-                                            selectable>
-                                        <a-menu-item key="all">
-                                            <div class="menu-item-content">
-                                                <span>所有动态</span>
-                                            </div>
-                                        </a-menu-item>
-                                        <a-menu-item key="comment">
-                                            <div class="menu-item-content">
-                                                <span>仅评论</span>
-                                            </div>
-                                        </a-menu-item>
-                                        <a-menu-item key="log">
-                                            <div class="menu-item-content">
-                                                <span>仅动态</span>
-                                            </div>
-                                        </a-menu-item>
-                                    </a-menu>
-                                </a-dropdown>
-                            </div>
-                            <vue-scroll>
-                                <div class="log-list muted">
-                                    <a class="show-more muted" v-show="checkShowMoreLog"
-                                       @click="getMoreTaskLog">
-                                        <a-icon type="ellipsis"/>
-                                        显示较早的 {{taskLogTotal - taskLogList.length}} 条动态
-                                    </a>
-                                    <div :class="{'log-comment': log.is_comment,'list-item': !log.is_comment}"
-                                         v-for="log in taskLogList" :key="log.code">
-                                        <template v-if="!log.is_comment">
-                                            <a-icon class="log-item" :type="log.icon"/>
-                                            <div class="log-item log-txt">
-                                                <div>{{log.member.name}} <span v-html="log.remark"></span></div>
-                                                <div v-if="log.content" class="log-content img-preview-content"
-                                                     v-html="log.content"></div>
-                                            </div>
-                                        </template>
-                                        <template v-if="log.is_comment">
-                                            <div class="log-txt text-default" style="width:100%; display: flex;justify-content: space-between">
-                                               <div style="display: flex;align-items: center">
-                                                   <a-avatar :size="24" :src="log.member.avatar" class="m-r-sm" style="margin-left: -5px"/>
-                                                   <div>{{log.member.name}}</div>
-                                               </div>
-                                                <a-tooltip :mouseEnterDelay="0.5">
-                                                    <template slot="title">
-                                                        <span>{{log.create_time}}</span>
-                                                    </template>
-                                                    <span class="muted">{{log.create_time | formatLogTime}}</span>
-                                                </a-tooltip>
-                                            </div>
-                                            <div class="log-txt text-default" style="padding: 0 0 0 30px;">
-                                                <div class="m-t-xs" v-html="checkLink(log.content)" ></div>
-                                            </div>
-                                        </template>
-                                        <a-tooltip v-if="!log.is_comment" :mouseEnterDelay="0.5">
-                                            <template slot="title">
-                                                <span>{{log.create_time}}</span>
-                                            </template>
-                                            <span>{{log.create_time | formatLogTime}}</span>
-                                        </a-tooltip>
-                                    </div>
-                                </div>
-                            </vue-scroll>
+                            <task-activity-feed
+                                :items="taskLogList"
+                                :hasMore="checkShowMoreLog"
+                                @load-more="getMoreTaskLog"
+                            />
                         </div>
                         <div class="footer" id="footer">
-                            <a-popover trigger="click" placement="top" :visible="showMentions" arrowPointAtCenter :getPopupContainer="getPopup">
-                                <template slot="content">
-                                    <div class="mentions-content" style="width: 200px;">
-                                        <div class="mentions-wrapper" v-for="member in taskMemberList" :key="member.id" @click="selectMentionMember(member)">
-                                            <a-avatar :src="member.avatar" icon="user" :size="28"/>
-                                            <span class="muted name m-l-xs">{{member.name}}</span>
-                                        </div>
-                                    </div>
-                                </template>
-<!--                                <span slot="title">Title</span>-->
-                                <a-textarea @focus="commenting = true" @blur="commenting = false" ref="commentText" v-model="comment" :rows="1" placeholder="@提及任务成员，Ctrl+Enter发表评论"
-                                            style="margin-right: 24px;"/>
-                            </a-popover>
-                            <a-button class="middle-btn" type="primary" @click="createComment">评论</a-button>
+                            <mention-input
+                                ref="mentionInput"
+                                v-model="comment"
+                                :members="taskMemberList"
+                                placeholder="@提及任务成员，Ctrl+Enter发表评论"
+                                @submit="createComment"
+                            />
                         </div>
                     </div>
                 </div>
@@ -1075,12 +1005,14 @@
     import {COMMON} from '../../const/common'
     import editor from '@/components/editor'
     import {createComment, del, edit, logs, read, recovery, recycle, star, taskDone} from "@/api/task";
-    import {del as delSourceLink} from "@/api/sourceLink";
+    import {del as delSourceLink, list as sourceLinkList} from "@/api/sourceLink";
     import {list as getTaskMembers} from "@/api/taskMember";
     import taskMemberMenu from "@/components/project/taskMemberMenu"
     import taskTagMenu from "@/components/project/taskTagMenu"
     import projectMemberMenu from "@/components/project/projectMemberMenu"
     import inviteProjectMember from '@/components/project/inviteProjectMember'
+    import TaskActivityFeed from '@/components/tools/TaskActivityFeed'
+    import MentionInput from '@/components/tools/MentionInput'
     import {getStore} from "@/assets/js/storage";
     import {getApiUrl} from "@/assets/js/utils";
     import {save as createTask, list as getTasks, like as doLike} from "@/api/task";
@@ -1092,8 +1024,7 @@
         editTaskWorkTime,
         saveTaskWorkTime,
         setPrivate,
-        setTag,
-        taskSources
+        setTag
     } from "../../api/task";
     import ATextarea from "ant-design-vue/es/input/TextArea";
     import {detail} from "../../api/departmentMember";
@@ -1113,7 +1044,9 @@
             taskMemberMenu,
             taskTagMenu,
             projectMemberMenu,
-            inviteProjectMember
+            inviteProjectMember,
+            TaskActivityFeed,
+            MentionInput,
         },
         props: {
             taskCode: {
@@ -1285,8 +1218,6 @@
             uploader: {
                 handler(newVal, oldVal) {
                     //监听是否有上传文件行为
-                    console.log(newVal);
-                    console.log(newVal.fileList);
                     const files = newVal.fileList;
                     const index = files.findIndex(item => item.projectName == this.task.projectName);
                     if (index !== -1) {
@@ -1360,9 +1291,10 @@
                 read(this.code).then((res) => {
                     this.getTaskLog();
                     this.taskSources();
-                    this.taskName = res.data.name;
-                    this.task = res.data;
-                    this.projectCodeCurrent = res.data.project_code;
+                    const taskData = res.data.task || res.data;
+                    this.taskName = taskData.name;
+                    this.task = taskData;
+                    this.projectCodeCurrent = taskData.project_code;
                     if (!this.task.end_time) {
                         this.task.setEndTime = false;
                         this.task.end_time = moment(moment().format('YYYY-MM-DD') + ' 18:00');
@@ -1387,7 +1319,7 @@
                     this.$store.dispatch('setTempData', {
                         projectCode: this.projectCodeCurrent,
                         taskCode: this.code,
-                        projectName: res.data.projectName
+                        projectName: taskData.projectName
                     })
                 });
             },
@@ -1398,9 +1330,10 @@
                     pageSize: 5,
                     comment: this.taskLogType[0] == 'comment' ? 1 : 0
                 }).then((res) => {
-                    this.taskLogList = res.data.list;
-                    this.taskLogTotal = res.data.total;
-                    if (res.data.total > 5) {
+                    const data = res.data || {};
+                    this.taskLogList = data.list || [];
+                    this.taskLogTotal = data.total || 0;
+                    if (data.total > 5) {
                         this.hasMoreTaskLog = true;
                         // this.showMoreTaskLog = 1;
                     }
@@ -1412,8 +1345,8 @@
                 })
             },
             taskSources() {
-                taskSources({taskCode: this.code,}).then((res) => {
-                    this.taskSourceList = res.data;
+                sourceLinkList({taskCode: this.code}).then((res) => {
+                    this.taskSourceList = res.data || [];
                 })
             },
             getMoreTaskLog() {
@@ -1436,7 +1369,7 @@
             getTaskMembers() {
                 this.clearMemberMenu();
                 getTaskMembers({taskCode: this.code, pageSize: 100}).then((res) => {
-                    this.taskMemberList = res.data.list;
+                    this.taskMemberList = (res.data && res.data.list) || [];
                     this.loading = false;
                 })
             },
@@ -1672,6 +1605,9 @@
                 this.initContent(this.task.description)
             },
             initContent(value) {
+                if (!this.$refs.vueWangeditor) {
+                    return;
+                }
                 if (value) {
                     this.$refs.vueWangeditor.setHtml(value)
                 } else {
@@ -1682,6 +1618,7 @@
                 });
             },
             doContent() {
+                if (!this.$refs.vueWangeditor) return;
                 let content = this.$refs.vueWangeditor.getHtml();
                 const obj = {
                     taskCode: this.code,
@@ -1763,7 +1700,8 @@
             getChildTasks() {
                 getTasks({pcode: this.code, pageSize: 100, deleted: 0}).then((res) => {
                     let list = [];
-                    res.data.list.forEach(v => {
+                    const dataList = (res.data && res.data.list) || [];
+                    dataList.forEach(v => {
                         v.visibleChildTaskMemberMenu = false;
                         list.push(v);
                     });
@@ -1932,6 +1870,7 @@
                     height += 85;
                     logHeight += 85;
                     $(".content-left").css("height", height + "px");
+                    $(".content-right").css("height", height + "px");
                     $(".log-wrap").css("height", logHeight + "px");
                 } else {
                     if (width > defaultWidth) {
@@ -1939,6 +1878,7 @@
                     }
                     $(".task-detail").css("width", width);
                     $(".content-left").css("height", height + "px");
+                    $(".content-right").css("height", height + "px");
                     $(".log-wrap").css("height", logHeight + "px");
                 }
             }
@@ -2306,9 +2246,12 @@
                 .content-right {
                     //width: 37%;
                     width: 410px;
+                    display: flex;
+                    flex-direction: column;
 
                     .header {
                         padding: 15px 20px 20px 20px;
+                        flex-shrink: 0;
                     }
 
                     .member-list {
@@ -2329,7 +2272,9 @@
                     .log-wrap {
                         border-top: 1px solid #e5e5e5;
                         border-bottom: 1px solid #e5e5e5;
-                        padding-bottom: 60px;
+                        flex: 1;
+                        overflow-y: auto;
+                        padding-bottom: 10px;
 
                         .header {
                             width: 100%;
@@ -2386,8 +2331,10 @@
                     }
 
                     .footer {
-                        padding: 20px 20px 0 20px;
+                        padding: 12px 20px;
                         display: flex;
+                        flex-shrink: 0;
+                        background: #fff;
                     }
                 }
             }
@@ -2665,35 +2612,60 @@
                         background: #fff;
                         border-radius: 12px;
                         margin: 0 16px;
+                        padding: 12px 16px;
+                        overflow-y: auto;
+                        flex: 1;
                         
-                        .log-list {
-                            .list-item {
-                                padding: 12px 0;
-                                
-                                .ant-avatar {
-                                    border-radius: 50%;
-                                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                        .task-activity-feed {
+                            .feed-filter {
+                                margin-bottom: 8px;
+                            }
+                            
+                            .feed-item {
+                                .feed-header {
+                                    .feed-author {
+                                        font-weight: 500;
+                                    }
                                 }
                                 
-                                .log-content {
-                                    border-left: 3px solid #1890ff;
-                                    background: #f8f9fa;
-                                    padding: 12px;
-                                    border-radius: 0 8px 8px 0;
-                                    margin-top: 8px;
+                                .feed-body {
+                                    .feed-detail {
+                                        background: #f8f9fa;
+                                        border-radius: 6px;
+                                        border: 1px solid rgba(0, 0, 0, 0.04);
+                                    }
+                                    
+                                    &.comment-body {
+                                        .comment-content {
+                                            background: #f0f5ff;
+                                            border-color: #d6e4ff;
+                                            border-radius: 8px;
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                     
                     .footer {
-                        padding: 20px;
+                        padding: 12px 20px;
+                        flex-shrink: 0;
+                        background: #fff;
                         
-                        .ant-input {
-                            border-radius: 8px;
+                        .mention-input-wrapper {
+                            .ant-input {
+                                border-radius: 8px;
+                                
+                                &:focus {
+                                    box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1);
+                                }
+                            }
                             
-                            &:focus {
-                                box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1);
+                            .mention-actions {
+                                .ant-btn {
+                                    border-radius: 8px;
+                                    font-weight: 500;
+                                }
                             }
                         }
                         
@@ -2730,7 +2702,7 @@
     .ant-modal {
         &-content {
             border-radius: 16px;
-            overflow: hidden;
+            overflow: visible;
         }
         
         &-header {

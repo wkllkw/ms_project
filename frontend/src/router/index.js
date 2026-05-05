@@ -90,11 +90,12 @@ const router = new Router({
                     component: () => import(/* webpackChunkName: "user" */ '@/views/member/forgot'),
                     meta: {model: 'Login'},
                 },
-                // {
-                //     path: 'register-result',
-                //     name: 'registerResult',
-                //     component: () => import(/* webpackChunkName: "user" */ '@/views/member/RegisterResult')
-                // }
+                {
+                    path: 'register-result',
+                    name: 'registerResult',
+                    component: () => import(/* webpackChunkName: "user" */ '@/views/member/RegisterResult'),
+                    meta: {model: 'Login'},
+                }
             ]
         },
         {
@@ -165,6 +166,22 @@ router.beforeEach((to, from, next) => {
         const homePath = config.HOME_PAGE + (org && org.code ? '/' + org.code : '');
         next({path: homePath});
         return;
+    }
+    // 权限节点校验：如果路由 meta 中定义了 permission，检查用户是否拥有该节点
+    if (store.state.logged && to.meta && to.meta.permission) {
+        const requiredNode = to.meta.permission;
+        const permissionNodes = store.state.permissionNodes || getStore('permissionNodes', true) || [];
+        // 如果有权限节点配置但用户不在权限列表中
+        // 注意：当 permissionNodes 为空数组时，说明用户没有任何权限，应拒绝访问受保护页面
+        if (!Array.isArray(permissionNodes) || !permissionNodes.includes(requiredNode)) {
+            // 避免重定向死循环：如果来自错误页，不再重定向到403，而是中止导航
+            if (from.path === '/403' || from.path === '/404' || from.path === '/500') {
+                next(false);
+                return;
+            }
+            next({path: '/403'});
+            return;
+        }
     }
     //无效页面跳转至404（仅已登录状态下判断）
     if (store.state.logged && !to.name && to.path !== HOME_PAGE) {

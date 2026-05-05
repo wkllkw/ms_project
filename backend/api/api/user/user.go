@@ -255,3 +255,10 @@ func (u *HandlerUser) unbindDingtalk(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }
+
+// _out 退出登录（前端调用，清理客户端状态即可）
+// JWT Token 无需服务端注销，过期后自动失效
+func (u *HandlerUser) _out(c *gin.Context) {
+	result := &common.Result{}
+	c.JSON(http.StatusOK, result.Success(nil))
+}

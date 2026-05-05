@@ -4,7 +4,7 @@
             <div class="action">
                 <Button type="primary" icon="plus" @click="rowClick(null,'new')">添加</Button>
             </div>
-            <Table :columns="columns" :dataSource="data" rowKey="id" :pagination="pagination" @change="pageChange">
+            <Table :columns="columns" :dataSource="data" rowKey="id" :pagination="pagination" @change="pageChange" size="middle">
                 <template slot="is_default" slot-scope="text,record,index">
                     <a-icon type="check" v-if="record.is_default"/>
                     <!--<span v-else>已禁用</span>-->
@@ -141,8 +141,8 @@
         methods: {
             init() {
                 getAuthList(this.requestData).then(res => {
-                    this.data = res.data.list;
-                    this.pagination.total = res.data.total;
+                    this.data = res.data && res.data.list ? res.data.list : [];
+                    this.pagination.total = res.data && res.data.total ? res.data.total : 0;
                 });
             },
             rowClick(record, action, index) {
@@ -218,7 +218,6 @@
                     //新增
                     Object.assign(obj, app.newData);
                 }
-                console.log(obj);
                 doAuth(obj).then(res => {
                     app.actionInfo.confirmLoading = false;
                     if (!checkResponse(res)) {

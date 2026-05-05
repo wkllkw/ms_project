@@ -33,7 +33,7 @@
                                  </span>
                                     <a-list-item-meta>
                                         <span slot="title">{{item.name}}</span>
-                                        <a-avatar slot="avatar" icon="user" :src="item.cover"/>
+                                        <a-avatar slot="avatar" icon="appstore" :src="item.cover" style="backgroundColor:#1890ff"/>
                                     </a-list-item-meta>
                                 </a-list-item>
                             </a-list>
@@ -113,7 +113,7 @@
             },
             changeProject(code) {
                 this.visibleMenu = false;
-                this.$router.push('/project/space/task/' + code);
+                this.$router.push('/project/space/task/' + code).catch(() => {});
             },
             showCheck(code) {
                 if (code == this.code) {

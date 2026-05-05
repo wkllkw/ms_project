@@ -417,17 +417,17 @@
             init(reset = true) {
                 this.loading = true;
                 analysis({type: 1}).then(res => {
-                    const data = res.data;
+                    const data = res.data || {};
                     this.projectData.count = data.projectCount || 0;
                     this.projectData.monthCount = data.monthProjectCount || 0;
-                    this.projectData.projectSchedule = data.projectSchedule || 0;
+                    this.projectData.projectSchedule = Math.round((data.projectSchedule || 0) * 100) / 100;
                     this.projectData.chartData.rows = data.projectList || [];
                     this.projectTotalData.chartData.rows = data.projectList || [];
 
                     this.taskData.count = data.taskCount || 0;
                     this.taskData.taskDoneCount = data.taskDoneCount || 0;
                     this.taskData.taskOverdueCount = data.taskOverdueCount || 0;
-                    this.taskData.taskOverduePercent = data.taskOverduePercent || 0;
+                    this.taskData.taskOverduePercent = Math.round((data.taskOverduePercent || 0) * 100) / 100;
                     this.taskData.chartData.rows = data.taskList || [];
                     this.taskTotalData.chartData.rows = data.taskList || [];
                     this.taskData.weekRate = data.weekRate || 0;
@@ -485,8 +485,13 @@
                     this.projectLoading = true;
                 }
                 getProjectList(this.requestData).then(res => {
-                    this.projectList = res.data.list || [];
-                    this.projectTotal = res.data.total || 0;
+                    const data = res.data || {};
+                    this.projectList = data.list || [];
+                    this.projectTotal = data.total || 0;
+                    this.projectLoading = false;
+                }).catch(() => {
+                    this.projectList = [];
+                    this.projectTotal = 0;
                     this.projectLoading = false;
                 });
             },

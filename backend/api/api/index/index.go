@@ -1,12 +1,18 @@
 package index
 
 import (
+	"crypto/md5"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	ws "test.com/project-api/api/websocket"
+	"test.com/project-api/internal/authz"
 	"test.com/project-api/internal/database/gorms"
 	"test.com/project-api/pkg/codecs"
 	common "test.com/project-common"
@@ -375,14 +381,16 @@ func (h *HandlerIndex) editPassword(c *gin.Context) {
 		return
 	}
 
-	// 验证原密码（这里简化处理，实际应该使用加密比对）
-	if password != member.Password {
+	// 验证原密码（MD5加密后比对，与注册逻辑一致）
+	oldMd5 := fmt.Sprintf("%x", md5.Sum([]byte(password)))
+	if oldMd5 != member.Password {
 		c.JSON(http.StatusOK, result.Fail(400, "原密码不正确"))
 		return
 	}
 
-	// 更新密码（实际应该加密存储）
-	if err := db.Model(&memberRow{}).Where("id = ?", memberId).Update("password", newPassword).Error; err != nil {
+	// 更新密码（MD5加密存储，与注册逻辑一致）
+	newMd5 := fmt.Sprintf("%x", md5.Sum([]byte(newPassword)))
+	if err := db.Model(&memberRow{}).Where("id = ?", memberId).Update("password", newMd5).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "密码修改失败"))
 		return
 	}
@@ -424,6 +432,43 @@ func (h *HandlerIndex) uploadAvatar(c *gin.Context) {
 	}))
 }
 
+// uploadImg 上传编辑器图片
+func (h *HandlerIndex) uploadImg(c *gin.Context) {
+	result := &common.Result{}
+	memberId := c.GetInt64("memberId")
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusOK, result.Fail(400, "请选择图片文件"))
+		return
+	}
+
+	// 创建上传目录
+	uploadDir := "uploads/editor"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusOK, result.Fail(500, "创建上传目录失败"))
+		return
+	}
+
+	// 生成文件名
+	ext := filepath.Ext(file.Filename)
+	filename := fmt.Sprintf("%d_%d%s", time.Now().UnixNano(), memberId, ext)
+	filePath := uploadDir + "/" + filename
+
+	// 保存文件
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		c.JSON(http.StatusOK, result.Fail(500, "上传失败"))
+		return
+	}
+
+	// 生成访问URL
+	imgUrl := "/" + strings.ReplaceAll(filePath, "\\", "/")
+
+	c.JSON(http.StatusOK, result.Success(gin.H{
+		"url": imgUrl,
+	}))
+}
+
 // bindClientId 绑定 WebSocket client_id 到用户（前端 socket.vue 调用）
 func (h *HandlerIndex) bindClientId(c *gin.Context) {
 	result := &common.Result{}
@@ -452,4 +497,18 @@ func joinStrings(strs []string, sep string) string {
 		result += s
 	}
 	return result
+}
+
+// nodes 获取当前用户的权限节点列表
+func (h *HandlerIndex) nodes(c *gin.Context) {
+	result := &common.Result{}
+	memberId := c.GetInt64("memberId")
+	db := gorms.GetDB()
+	nodes := authz.GetUserNodes(db, memberId)
+	if nodes == nil {
+		nodes = []string{}
+	}
+	c.JSON(http.StatusOK, result.Success(gin.H{
+		"nodes": nodes,
+	}))
 }

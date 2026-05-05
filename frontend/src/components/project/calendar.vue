@@ -27,7 +27,7 @@
                                         {{item.name}}
                                     </div>
                                     <div slot="avatar" style="display:flex;align-items: center">
-                                        <a-checkbox :value="item.memberCode" class="m-r-sm"></a-checkbox>
+                                        <a-checkbox :value="item.code" class="m-r-sm"></a-checkbox>
                                         <a-avatar :src="item.avatar" alt="">{{item.name}}</a-avatar>
                                     </div>
                                 </a-list-item-meta>
@@ -289,7 +289,6 @@ export default {
             this.getEventsListByCalendar(this.calendarValue);
         },
         changeMonth(num, onChange) {
-            console.log(num);
             if (num) {
                 this.calendarValue.add(num, 'months')
                 onChange(this.calendarValue)
@@ -305,16 +304,13 @@ export default {
             return listData || [];
         },
         onPanelChange(value, mode) {
-            console.log(value, mode);
             this.getEventsListByCalendar(value);
         },
         getEventsListByCalendar(value) {
             let app = this;
             let obj = {date: value.format('YYYY-MM-DD HH:mm:ss'), memberCodes: JSON.stringify(this.memberCodes)};
-            console.log('请求日程数据:', obj);
             this.loading = true;
             getEventsListByCalendar(obj).then(res => {
-                console.log('日程数据响应:', res);
                 if (res && res.data && res.data.list) {
                     // 为每个日程项添加 visible 属性以支持 Vue 响应式
                     const listData = res.data.list;
@@ -335,7 +331,6 @@ export default {
                         });
                     });
                     app.list = listData;
-                    console.log('处理后的日程数据:', app.list);
                 } else {
                     app.list = {};
                 }
@@ -346,7 +341,6 @@ export default {
                     })
                 })
             }).catch(err => {
-                console.error('获取日程数据失败:', err);
                 app.list = {};
             }).finally(() => {
                 app.loading = false;
@@ -384,7 +378,6 @@ export default {
             });
         },
         showCalendarPop(record) {
-            console.log('showCalendarPop called with record:', record);
             // 先关闭所有弹出框
             _.forIn(this.list, (calendarList, dateKey) => {
                 calendarList.forEach((item, index) => {
@@ -398,7 +391,6 @@ export default {
                 _.forIn(this.list, (calendarList, dateKey) => {
                     const index = calendarList.findIndex(item => item.code === record.code);
                     if (index !== -1) {
-                        console.log('Setting visible for item at dateKey:', dateKey, 'index:', index);
                         this.$set(this.list[dateKey][index], 'visible', true);
                     }
                 });
@@ -453,7 +445,6 @@ export default {
             }else {
                 this.code = '';
             }
-            console.log(record);
             if (action == 'add' || action == 'edit' || action == 'new') {
                 app.eventsCode = '';
                 if (action == 'edit') {

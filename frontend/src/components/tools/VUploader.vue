@@ -1,6 +1,8 @@
 <template>
-    <div class="v-uploader" :class="{'hidden-files': !showFiles,'hidden-uploader': !showUploader}">
-        <a-card :title="uploaderTitle">
+    <div class="v-uploader-wrapper" v-show="showUploader">
+        <div class="v-uploader-mask" @click="closeUploader"></div>
+        <div class="v-uploader">
+            <a-card :title="uploaderTitle">
             <div class="actions" slot="extra">
                 <a class="muted action-item" @click="showFiles = !showFiles">
                     <a-icon type="shrink" v-show="showFiles"/>
@@ -85,7 +87,8 @@
                     </uploader-files>-->
                 </vue-scroll>
             </uploader>
-        </a-card>
+            </a-card>
+        </div>
     </div>
 </template>
 
@@ -114,22 +117,28 @@
                 showUploader: false,//显示上传窗口
                 progressTotal: 0, //上传中的文件数
                 completeTotal: 0, //已完成的文件数
+                failedTotal: 0, //上传失败的文件数
+                lastErrorMsg: '', //最后一次上传失败的错误消息
                 options: {
                     target: uploadFiles,
                     testChunks: false,
-                    chunkSize: 5 * 1024 * 1024,//分片大小
+                    // 后端不支持分片上传，设置极大值禁用分片
+                    chunkSize: 500 * 1024 * 1024,
+                    simultaneousUploads: 1,
                     query: function () {
                         return getStore('tempData', true);//query暂时无法动态响应
                     },
                     headers: function () {
-                        let organization = getStore('currentOrganization', true);
                         const auth = getAuthorization();
-                        auth.organizationcode = organization.code;
+                        const organization = getStore('currentOrganization', true);
+                        if (organization && organization.code) {
+                            auth.organizationCode = organization.code;
+                        }
                         return auth;
                     },
                 },
                 attrs: {
-                    accept: 'image/*'
+                    // 不限制文件格式，后端支持图片/文档/视频/音频/代码等所有类型
                 },
                 autoStart: true,
             }
@@ -162,7 +171,6 @@
             this.$nextTick(() => {
                 window.uploader = this.$refs.uploader.uploader;
                 this.$store.dispatch('setUploader', window.uploader);
-                console.log(window.uploader);
             })
         },
         methods: {
@@ -177,7 +185,6 @@
                 let ignored = false;
                 let fileName = '';
                 const singleMaxSize = this.singleMaxSize * 1024 * 1024;
-                console.log(fileList);
                 fileList.forEach((v, k) => {
                     if (v.size > singleMaxSize) {
                         ignored = true;
@@ -198,49 +205,72 @@
                 this.showUploader = true;
                 this.showFiles = true;
                 this.progressTotal += files.length;
-                console.log('file submitted', files)
 
             },
             fileProgress(rootFile, file, chunk) { //有文件上传中
                 this.showUploader = true;
                 this.showFiles = true;
-                console.log('file progress', arguments)
             },
             fileSuccess(rootFile, file, message, chunk) { //一个文件上传成功
-                const response = JSON.parse(message);
-                if (!checkResponse(response)) {
-                    notice({title: response.msg}, 'notice', 'error');
+                let response;
+                try {
+                    response = JSON.parse(message);
+                } catch (e) {
+                    this.failedTotal++;
+                    this.lastErrorMsg = '上传响应解析失败: ' + String(message).substring(0, 100);
+                    notice({title: this.lastErrorMsg}, 'notice', 'error');
                     return false;
                 }
-                rootFile.projectName = response.data.projectName;
-                rootFile.fileUrl = response.data.url;
-                console.log('file success', rootFile);
+                if (!checkResponse(response)) {
+                    this.lastErrorMsg = response.msg || '上传失败';
+                    notice({title: this.lastErrorMsg}, 'notice', 'error');
+                    this.failedTotal++;
+                    return false;
+                }
+                rootFile.projectName = response.data.projectName || response.data.title || '';
+                rootFile.fileUrl = response.data.fileUrl || response.data.url;
                 this.completeTotal++;
             },
-            fileError(rootFile, file, message, chunk) { //一个文件上传失败                this.progressTotal--;
-                this.completeTotal--;
-                const response = JSON.parse(message);
+            fileError(rootFile, file, message, chunk) { //一个文件上传失败
+                this.progressTotal--;
+                this.failedTotal++;
+                let errorMsg = '网络请求失败';
+                try {
+                    const response = JSON.parse(message);
+                    errorMsg = response.msg || '网络请求失败';
+                } catch (e) {
+                    // message 可能不是 JSON（如网络错误）
+                    if (message) {
+                        errorMsg = '网络错误: ' + String(message).substring(0, 80);
+                    }
+                }
+                this.lastErrorMsg = errorMsg;
                 file.cancel();
-                rootFile.projectName = response.data.projectName;
-                console.log('file error', rootFile);
-                notice({title: response.msg}, 'notice', 'error');
+                notice({title: errorMsg}, 'notice', 'error');
             },
             fileComplete(rootFile) { //一个文件上传完成
-                console.log('file complete', rootFile);
             },
             complete() { //所有文件上传完成
-                console.log('complete', arguments);
-                this.progressTotal = this.completeTotal = 0;
-                notice({title: '关联文件成功'}, 'notice', 'success');
-                // 通知文件页刷新
-                const tempData = getStore('tempData', true);
-                this.$root.$emit('fileUploadComplete', tempData);
+                // 只有真正有文件上传成功时才提示成功并刷新列表
+                if (this.completeTotal > 0) {
+                    notice({title: '关联文件成功'}, 'notice', 'success');
+                    // 通知文件页刷新
+                    const tempData = getStore('tempData', true);
+                    this.$root.$emit('fileUploadComplete', tempData);
+                }
+                if (this.failedTotal > 0) {
+                    notice({
+                        title: `${this.failedTotal}个文件上传失败`,
+                        desc: this.lastErrorMsg || ''
+                    }, 'notice', 'error', 8);
+                }
+                this.progressTotal = this.completeTotal = this.failedTotal = 0;
+                this.lastErrorMsg = '';
                 // 上传完成后立即隐藏上传面板，不延迟
                 this.showFiles = false;
                 this.showUploader = false;
             },
             cancelUpload(file) {
-                console.log(file);
                 this.progressTotal--;
                 this.completeTotal--;
                 file.file.cancel();
@@ -250,7 +280,6 @@
                 return list.reverse();
             },
             testSomeThing() {
-                console.log(this.uploader.fileList);
                 this.uploader.fileList[0].resume();
             },
         }
@@ -260,138 +289,151 @@
 <style lang="less">
     @import "~ant-design-vue/lib/style/themes/default";
 
-    .v-uploader {
+    .v-uploader-wrapper {
         position: fixed;
-        bottom: 12px;
-        right: 24px;
-        width: 485px;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         z-index: 1001;
-        box-shadow: 0 7px 21px rgba(0, 0, 0, .1);
-        transition: bottom 218ms ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
-        .ant-card {
-            box-shadow: 0 7px 21px rgba(0, 0, 0, .1);
-
-            .ant-card-head {
-                margin-bottom: 0;
-                border-bottom: 1px solid #e1e1e1;
-            }
-
-            .ant-card-head-title, .ant-card-extra {
-                padding: 12px 0;
-            }
-
-            .ant-card-body {
-                padding: 0;
-            }
+        .v-uploader-mask {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
         }
 
-        &.hidden-files {
-            bottom: -241px;
-        }
+        .v-uploader {
+            position: relative;
+            z-index: 1;
+            width: 500px;
+            box-shadow: 0 7px 21px rgba(0, 0, 0, .15);
+            border-radius: 6px;
+            overflow: hidden;
 
-        &.hidden-uploader {
-            bottom: -291px;
-        }
+            .ant-card {
+                box-shadow: none;
+                border-radius: 6px;
 
-        .actions {
-            .action-item {
-                margin-left: 12px;
-                font-size: 16px;
+                .ant-card-head {
+                    margin-bottom: 0;
+                    border-bottom: 1px solid #e1e1e1;
+                }
+
+                .ant-card-head-title, .ant-card-extra {
+                    padding: 12px 0;
+                }
+
+                .ant-card-body {
+                    padding: 0;
+                }
             }
-        }
 
-        .uploader-workplace {
-            height: 240px;
-            background-color: #f7f7f7;
-            padding: 12px 0 0 12px;
+            .actions {
+                .action-item {
+                    margin-left: 12px;
+                    font-size: 16px;
+                }
+            }
 
-            .uploader-list {
-                padding-right: 12px;
+            .uploader-workplace {
+                height: 240px;
+                background-color: #f7f7f7;
+                padding: 12px 0 0 12px;
 
-                .uploader-wrapper {
-                    .uploader-file {
-                        padding: 0;
-                        height: auto;
-                        line-height: 36px;
-                        border-bottom: none;
-                        border-radius: 4px;
+                .uploader-list {
+                    padding-right: 12px;
 
-                        .uploader-item {
-                            width: 100%;
-                            margin-bottom: 8px;
-                            background: #eee;
+                    .uploader-wrapper {
+                        .uploader-file {
+                            padding: 0;
+                            height: auto;
+                            line-height: 36px;
+                            border-bottom: none;
+                            border-radius: 4px;
 
-                            .item-content {
-                                padding: 6px 12px;
-                                display: flex;
-                                justify-content: space-between;
-                                flex: 1;
+                            .uploader-item {
+                                width: 100%;
+                                margin-bottom: 8px;
+                                background: #eee;
 
-                                .item-info {
-                                    flex: 1 1 auto;
-                                    position: relative;
-                                    overflow: hidden;
-                                    text-overflow: ellipsis;
-                                    white-space: nowrap;
+                                .item-content {
+                                    padding: 6px 12px;
+                                    display: flex;
+                                    justify-content: space-between;
+                                    flex: 1;
 
-                                    .file-item {
-                                        display: flex;
+                                    .item-info {
+                                        flex: 1 1 auto;
+                                        position: relative;
+                                        overflow: hidden;
+                                        text-overflow: ellipsis;
+                                        white-space: nowrap;
 
-                                        .file-icon {
-                                            margin-right: 8px;
-                                        }
-
-                                        .file-info {
-                                            width: 100%;
-                                            min-width: 0;
-                                            padding: 4px 0;
-                                            line-height: 16px;
+                                        .file-item {
                                             display: flex;
-                                            flex-direction: column;
-                                            justify-content: center;
 
-                                            .file-content {
+                                            .file-icon {
+                                                margin-right: 8px;
+                                            }
+
+                                            .file-info {
                                                 width: 100%;
+                                                min-width: 0;
+                                                padding: 4px 0;
+                                                line-height: 16px;
                                                 display: flex;
-                                                align-items: center;
-                                                justify-content: space-between;
+                                                flex-direction: column;
+                                                justify-content: center;
 
-                                                .file-title {
-                                                    max-width: 210px;
-                                                    text-overflow: ellipsis;
-                                                    overflow: hidden;
-                                                    min-width: 0;
-                                                }
-
-                                                .file-extra {
+                                                .file-content {
+                                                    width: 100%;
                                                     display: flex;
                                                     align-items: center;
-                                                    max-width: 200px;
-                                                    margin-left: 16px;
-                                                    color: gray;
-                                                    font-size: 12px;
+                                                    justify-content: space-between;
 
-                                                    span {
-                                                        margin-left: 3px;
+                                                    .file-title {
+                                                        max-width: 210px;
+                                                        text-overflow: ellipsis;
+                                                        overflow: hidden;
+                                                        min-width: 0;
+                                                    }
+
+                                                    .file-extra {
+                                                        display: flex;
+                                                        align-items: center;
+                                                        max-width: 200px;
+                                                        margin-left: 16px;
+                                                        color: gray;
+                                                        font-size: 12px;
+
+                                                        span {
+                                                            margin-left: 3px;
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
 
-                                        .uploader-progress {
-                                            .ant-progress-outer {
-                                                margin: 0;
+                                            .uploader-progress {
+                                                .ant-progress-outer {
+                                                    margin: 0;
+                                                }
                                             }
                                         }
                                     }
-                                }
 
-                                .item-status {
-                                    display: flex;
-                                    justify-content: flex-end;
-                                    align-items: center;
-                                    width: 30px;
+                                    .item-status {
+                                        display: flex;
+                                        justify-content: flex-end;
+                                        align-items: center;
+                                        width: 30px;
+                                    }
                                 }
                             }
                         }

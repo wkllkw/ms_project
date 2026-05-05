@@ -358,7 +358,7 @@
                                 })
                             });
                         }
-                        treeNode.dataRef.isLeaf = !list.length > 0;
+                        treeNode.dataRef.isLeaf = list.length === 0;
                         treeNode.dataRef.children = list;
                         this.treeData = [...this.treeData];
                         resolve();
@@ -377,8 +377,13 @@
                 this.treeData = list;
                 this.showCreateDepartment = false
             },
-            createChildDepartmentSuccess() {
-                this.onLoadData(this.currentTreeNode);
+            createChildDepartmentSuccess(data) {
+                if (this.currentTreeNode && this.currentTreeNode.dataRef) {
+                    // 更新父节点的 isLeaf 状态
+                    this.currentTreeNode.dataRef.isLeaf = false;
+                    // 重新加载子部门列表
+                    this.onLoadData(this.currentTreeNode);
+                }
                 this.showCreateChildDepartment = false;
             },
             editDepartmentSuccess(data) {
@@ -494,7 +499,6 @@
                     return
                 }
                 if (info.file.status === 'done') {
-                    console.log(info);
                     this.uploadLoading = false;
                     if (checkResponse(info.file.response, true)) {
                         const count = info.file.response.data;

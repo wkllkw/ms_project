@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"test.com/project-api/internal/authz"
 	"test.com/project-api/internal/database/gorms"
 	"test.com/project-api/pkg/codecs"
 	"test.com/project-api/pkg/model"
@@ -63,6 +64,12 @@ func (h *HandlerProjectMember) index(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB()
+	// 数据隔离：只有项目成员才能查看成员列表
+	memberId := c.GetInt64("memberId")
+	if !authz.IsProjectMember(db, memberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
 	var total int64
 	_ = db.Model(&projectMemberRow{}).Where("project_code=?", pid).Count(&total).Error
 	var list []projectMemberRow
@@ -107,6 +114,12 @@ func (h *HandlerProjectMember) searchInviteMember(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB()
+	// 数据隔离：只有项目成员才能搜索邀请成员
+	memberId := c.GetInt64("memberId")
+	if !authz.IsProjectMember(db, memberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
 	var joined []projectMemberRow
 	_ = db.Where("project_code=?", pid).Find(&joined).Error
 	joinedMap := map[int64]struct{}{}
@@ -148,6 +161,12 @@ func (h *HandlerProjectMember) inviteMember(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB()
+	// 数据隔离：只有项目成员才能邀请成员
+	curMemberId := c.GetInt64("memberId")
+	if !authz.IsProjectMember(db, curMemberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
+		return
+	}
 	var count int64
 	_ = db.Model(&projectMemberRow{}).Where("project_code=? and member_code=?", pid, mid).Count(&count).Error
 	if count > 0 {
@@ -183,6 +202,12 @@ func (h *HandlerProjectMember) removeMember(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB()
+	// 数据隔离：只有项目 Owner 才能移除成员
+	curMemberId := c.GetInt64("memberId")
+	if !authz.IsProjectOwner(db, curMemberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
+		return
+	}
 	_ = db.Where("project_code=? and member_code=?", pid, mid).Delete(&projectMemberRow{}).Error
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }

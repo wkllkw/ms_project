@@ -21,12 +21,15 @@ func (*RouterAuth) Route(r *gin.Engine) {
 	group.Use(midd.TokenVerify())
 	h := New()
 	group.POST("/auth", h.list)
-	group.POST("/auth/add", h.add)
-	group.POST("/auth/edit", h.edit)
-	group.POST("/auth/apply", h.apply)
-	group.POST("/auth/forbid", h.forbid)
-	group.POST("/auth/resume", h.resume)
-	group.POST("/auth/setDefault", h.setDefault)
-	group.POST("/auth/del", h.del)
+	// 以下接口需要 system.account.auth 节点权限
+	adminGroup := group.Group("")
+	adminGroup.Use(midd.NodeVerify("system.account.auth"))
+	adminGroup.POST("/auth/add", h.add)
+	adminGroup.POST("/auth/edit", h.edit)
+	adminGroup.POST("/auth/apply", h.apply)
+	adminGroup.POST("/auth/forbid", h.forbid)
+	adminGroup.POST("/auth/resume", h.resume)
+	adminGroup.POST("/auth/setDefault", h.setDefault)
+	adminGroup.POST("/auth/del", h.del)
 }
 

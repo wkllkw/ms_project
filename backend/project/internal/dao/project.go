@@ -68,7 +68,7 @@ func (p ProjectDao) FindCollectProjectByMemId(ctx context.Context, memberId int6
 	var pms []*pro.ProjectAndMember
 	session := p.conn.Session(ctx)
 	index := (page - 1) * size
-	sql := fmt.Sprintf("select * from ms_project where id in (select project_code from ms_project_collection where member_code=?) order by sort limit ?,?")
+	sql := fmt.Sprintf("select a.*, coalesce(owner.name,'') as owner_name from ms_project a left join ms_project_member opm on opm.project_code=a.id and opm.is_owner=1 left join ms_member owner on owner.id=opm.member_code where a.id in (select project_code from ms_project_collection where member_code=?) order by sort limit ?,?")
 	raw := session.Raw(sql, memberId, index, size)
 	raw.Scan(&pms)
 	var total int64
@@ -81,7 +81,7 @@ func (p ProjectDao) FindProjectByMemId(ctx context.Context, memId int64, conditi
 	var pms []*pro.ProjectAndMember
 	session := p.conn.Session(ctx)
 	index := (page - 1) * size
-	sql := fmt.Sprintf("select * from ms_project a, ms_project_member b where a.id = b.project_code and b.member_code=?  %s order by sort limit ?,?", condition)
+	sql := fmt.Sprintf("select a.*, b.project_code, b.member_code, b.join_time, b.is_owner, b.authorize, coalesce(owner.name,'') as owner_name from ms_project a, ms_project_member b left join ms_project_member opm on opm.project_code=b.project_code and opm.is_owner=1 left join ms_member owner on owner.id=opm.member_code where a.id = b.project_code and b.member_code=?  %s order by sort limit ?,?", condition)
 	raw := session.Raw(sql, memId, index, size)
 	raw.Scan(&pms)
 	var total int64

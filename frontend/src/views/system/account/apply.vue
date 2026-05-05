@@ -13,8 +13,9 @@
                     :defaultExpandAll="defaultExpandAll"
                     :autoExpandParent="autoExpandParent"
                     v-if="nodeList.length"
-                    :treeNodes="nodeList"
-                    v-model="checkedList"
+                    :treeData="nodeList"
+                    :checkedKeys="checkedList"
+                    @check="onCheck"
             >
             </Tree>
         </wrapper-content>
@@ -22,9 +23,9 @@
 </template>
 <script>
     import {Button, Tree} from 'ant-design-vue';
-    import {getAuthList, apply} from '@/api/auth';
-    import {createRoute, checkResponse} from '@/assets/js/utils';
-    import {getStore} from '@/assets/js/storage';
+    import {apply} from '@/api/auth';
+    import {getNodeList} from '@/api/node';
+    import {checkResponse} from '@/assets/js/utils';
 
     export default {
         components: {
@@ -45,14 +46,55 @@
         methods: {
             init() {
                 let app = this;
-                apply(app.$route.params.id).then(res => {
-                    app.nodeList = res.data.list;
-                    app.checkedList = res.data.checkedList;
+                // 同时加载节点树和已选中的节点
+                Promise.all([
+                    getNodeList(),
+                    apply(app.$route.params.id)
+                ]).then(([nodeRes, authRes]) => {
+                    // 转换节点树数据为 Tree 组件需要的格式
+                    let nodes = [];
+                    if (nodeRes && nodeRes.data && nodeRes.data.nodes) {
+                        nodes = app.transformNodeTree(nodeRes.data.nodes);
+                    }
+                    app.nodeList = nodes;
+
+                    // 获取已选中的节点列表
+                    let checked = [];
+                    if (authRes && authRes.data) {
+                        if (authRes.data.checkedList && Array.isArray(authRes.data.checkedList)) {
+                            checked = authRes.data.checkedList;
+                        } else if (authRes.data.list && Array.isArray(authRes.data.list)) {
+                            checked = authRes.data.list;
+                        }
+                    }
+                    app.checkedList = checked;
                 });
+            },
+            // 将后端节点数据转换为 Tree 组件格式
+            transformNodeTree(nodes) {
+                if (!nodes || !Array.isArray(nodes)) return [];
+                return nodes.map(node => {
+                    let item = {
+                        title: node.title || '',
+                        key: node.node || '',
+                        value: node.node || '',
+                    };
+                    if (node.children && node.children.length > 0) {
+                        item.children = this.transformNodeTree(node.children);
+                    }
+                    return item;
+                });
+            },
+            onCheck(checkedKeys) {
+                this.checkedList = checkedKeys;
             },
             saveAuth() {
                 let app = this;
-                apply(app.$route.params.id, JSON.stringify(app.checkedList), 'save')
+                apply(app.$route.params.id, JSON.stringify(app.checkedList), 'save').then(res => {
+                    if (checkResponse(res)) {
+                        app.$message.success('保存成功');
+                    }
+                });
             },
             back(){
                 this.$router.push('/system/account/auth')

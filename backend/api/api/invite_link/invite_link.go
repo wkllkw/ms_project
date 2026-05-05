@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"test.com/project-api/internal/database/gorms"
+	"test.com/project-api/pkg/codecs"
 	common "test.com/project-common"
 )
 
@@ -127,7 +128,7 @@ func (h *HandlerInviteLink) createInvite(c *gin.Context) {
 	inviteLink := &inviteLinkRow{
 		InviteCode: inviteCode,
 		InviteType: inviteType,
-		SourceCode: parseStringToInt64(sourceCode),
+		SourceCode: decryptOrParseInt64(sourceCode),
 		ExpiredAt:  expiredAt,
 		CreateBy:   memberId,
 		CreateTime: time.Now().UnixMilli(),
@@ -227,4 +228,13 @@ func parseStringToInt64(s string) int64 {
 		}
 	}
 	return result
+}
+
+// decryptOrParseInt64 尝试先解密，失败则提取数字
+func decryptOrParseInt64(s string) int64 {
+	decrypted, err := codecs.DecryptInt64(s)
+	if err == nil && decrypted > 0 {
+		return decrypted
+	}
+	return parseStringToInt64(s)
 }

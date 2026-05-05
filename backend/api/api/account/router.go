@@ -22,14 +22,17 @@ func (*RouterAccount) Route(r *gin.Engine) {
 	h := New()
 	group.POST("/account", h.list)
 	group.POST("/account/_allList", h.allList)
-	group.POST("/account/forbid", h.forbid)
-	group.POST("/account/resume", h.resume)
-	group.POST("/account/add", h.add)
-	group.POST("/account/edit", h.edit)
-	group.POST("/account/auth", h.auth)
-	group.POST("/account/del", h.del)
 	group.POST("/account/read", h.read)
 	group.POST("/account/_syncDetail", h.syncDetail)
 	group.POST("/account/_joinByInviteLink", h.joinByInviteLink)
+	// 账号增删改禁启用需要 system.account 节点权限
+	adminGroup := group.Group("")
+	adminGroup.Use(midd.NodeVerify("system.account"))
+	adminGroup.POST("/account/forbid", h.forbid)
+	adminGroup.POST("/account/resume", h.resume)
+	adminGroup.POST("/account/add", h.add)
+	adminGroup.POST("/account/edit", h.edit)
+	adminGroup.POST("/account/auth", h.auth)
+	adminGroup.POST("/account/del", h.del)
 }
 

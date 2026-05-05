@@ -101,6 +101,27 @@ func (h *HandlerProjectVersion) list(c *gin.Context) {
 
 	out := make([]gin.H, 0, len(rows))
 	for _, r := range rows {
+		// 计算状态文本
+		statusText := "未开始"
+		switch r.Status {
+		case 1:
+			statusText = "进行中"
+		case 2:
+			statusText = "延期发布"
+		case 3:
+			statusText = "已发布"
+		}
+
+		// 计算完成进度
+		var totalTasks int64
+		var doneTasks int64
+		db.Model(&versionTaskRow{}).Where("version_code=? AND deleted=0", r.Id).Count(&totalTasks)
+		db.Model(&versionTaskRow{}).Where("version_code=? AND deleted=0 AND done=1", r.Id).Count(&doneTasks)
+		var schedule int
+		if totalTasks > 0 {
+			schedule = int(float64(doneTasks) / float64(totalTasks) * 100)
+		}
+
 		out = append(out, gin.H{
 			"code":            codecs.EncryptInt64(r.Id),
 			"featuresCode":    featuresCode,
@@ -110,6 +131,8 @@ func (h *HandlerProjectVersion) list(c *gin.Context) {
 			"planPublishTime": r.PlanPublishTime,
 			"publishTime":     r.PublishTime,
 			"status":          r.Status,
+			"statusText":      statusText,
+			"schedule":        schedule,
 			"sort":            r.Sort,
 			"createTime":      r.CreateTime,
 		})

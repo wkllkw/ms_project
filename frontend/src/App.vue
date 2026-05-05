@@ -20,6 +20,12 @@
         watch: {},
         methods: {
             getPopupContainer(el, dialogContext) {
+                if (el) {
+                    // 如果触发元素在 .task-detail 内，渲染到 body 以避免被 vue-scroll 裁剪
+                    if (el.closest && el.closest('.task-detail')) {
+                        return document.body;
+                    }
+                }
                 if (dialogContext) {
                     return dialogContext.getDialogWrap();
                 } else {

@@ -131,11 +131,20 @@ func (c *Config) InitMysqlConfig() {
 	c.MysqlConfig = mc
 }
 func (c *Config) InitJwtConfig() {
+	accessSecret := c.viper.GetString("jwt.accessSecret")
+	refreshSecret := c.viper.GetString("jwt.refreshSecret")
+	// 支持环境变量覆盖，生产环境推荐通过环境变量设置强密钥
+	if envSecret := os.Getenv("JWT_ACCESS_SECRET"); envSecret != "" {
+		accessSecret = envSecret
+	}
+	if envSecret := os.Getenv("JWT_REFRESH_SECRET"); envSecret != "" {
+		refreshSecret = envSecret
+	}
 	mc := &JwtConfig{
-		AccessSecret:  c.viper.GetString("jwt.accessSecret"),
+		AccessSecret:  accessSecret,
 		AccessExp:     c.viper.GetInt64("jwt.accessExp"),
 		RefreshExp:    c.viper.GetInt64("jwt.refreshExp"),
-		RefreshSecret: c.viper.GetString("jwt.refreshSecret"),
+		RefreshSecret: refreshSecret,
 	}
 	c.JwtConfig = mc
 }

@@ -1,465 +1,448 @@
-// 任务看板美化样式 - 增强版
+// 任务看板样式 - 极简现代风格
 
 .project-space-task {
-  // 导航栏美化
+  // 导航栏 - 扁平化
   .project-navigation {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-    
+    background: #fff;
+    box-shadow: none;
+    border-bottom: 1px solid #f0f0f0;
+
     .project-nav-header {
-      padding: 16px 24px;
-      
+      padding: 12px 20px;
+
       .ant-breadcrumb {
-        font-size: 14px;
-        
+        font-size: 13px;
+
         a {
-          color: #1890ff;
-          transition: all 0.3s ease;
-          
+          color: #3a82f8;
+          transition: color 0.15s;
+
           &:hover {
-            color: #40a9ff;
+            color: #5a96fa;
           }
         }
       }
-      
+
       .nav-title {
         font-weight: 600;
         color: rgba(0, 0, 0, 0.85);
       }
-      
+
       .actions {
         .anticon {
-          font-size: 18px;
+          font-size: 16px;
           cursor: pointer;
-          transition: all 0.3s ease;
-          
+          transition: color 0.15s;
+
           &:hover {
-            transform: scale(1.1);
+            color: #3a82f8;
           }
         }
       }
-      
+
       .label-normal {
-        background: #f6ffed;
-        border: 1px solid #b7eb8f;
-        color: #52c41a;
+        background: #f0f0f0;
+        border: 1px solid #e0e0e0;
+        color: rgba(0, 0, 0, 0.55);
         padding: 2px 8px;
         border-radius: 4px;
         font-size: 12px;
         margin-left: 8px;
       }
     }
-    
+
     .nav-body {
-      padding: 0 24px 12px;
-      
+      padding: 0 20px 8px;
+
       .nav-wrapper {
         li {
           a {
-            padding: 8px 16px;
-            border-radius: 6px;
-            transition: all 0.3s ease;
+            padding: 6px 12px;
+            border-radius: 4px;
+            transition: color 0.15s, background-color 0.15s;
             font-weight: 500;
-            
+
             &:hover {
-              background: rgba(24, 144, 255, 0.08);
-              color: #1890ff;
+              background: #f5f5f5;
+              color: #3a82f8;
             }
           }
-          
+
           &.actives a {
-            background: rgba(24, 144, 255, 0.12);
-            color: #1890ff;
+            background: rgba(58, 130, 248, 0.08);
+            color: #3a82f8;
           }
         }
       }
     }
-    
+
     .project-nav-footer {
-      right: 24px;
-      top: 12px;
-      
+      right: 20px;
+      top: 10px;
+
       .footer-item {
-        padding: 8px 16px;
-        border-radius: 6px;
-        transition: all 0.3s ease;
+        padding: 6px 12px;
+        border-radius: 4px;
+        transition: color 0.15s, background-color 0.15s;
         font-weight: 500;
-        
+
         &:hover {
-          background: rgba(24, 144, 255, 0.08);
+          background: #f5f5f5;
         }
-        
+
         &.active {
-          background: rgba(24, 144, 255, 0.12);
-          color: #1890ff;
+          background: rgba(58, 130, 248, 0.08);
+          color: #3a82f8;
         }
-        
+
         .anticon {
           margin-right: 4px;
         }
       }
     }
   }
-  
+
   // 看板容器
   .board-scrum-stages {
-    padding: 20px;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    padding: 16px;
+    background: #f5f5f5;
   }
-  
-  // 任务列美化
+
+  // 任务列
   .scrum-stage {
     width: 300px;
-    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    margin-right: 16px;
-    transition: all 0.3s ease;
-    
-    &:hover {
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-    }
-    
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f0f0f0;
+    margin-right: 12px;
+
     // 列标题
     .scrum-stage-header {
-      padding: 16px 18px;
-      background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
-      border-radius: 12px 12px 0 0;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-      
+      padding: 12px 16px;
+      background: #fafafa;
+      border-radius: 6px 6px 0 0;
+      border-bottom: 1px solid #f0f0f0;
+
       .stage-name {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 600;
         color: rgba(0, 0, 0, 0.85);
-        
+
         .task-count {
-          color: rgba(0, 0, 0, 0.45);
-          font-weight: 500;
-          font-size: 13px;
+          color: rgba(0, 0, 0, 0.35);
+          font-weight: 400;
+          font-size: 12px;
         }
       }
-      
+
       .stage-menu-toggler {
         right: 12px;
-        
+
         .menu-toggler-title {
-          padding: 6px;
-          border-radius: 6px;
-          transition: all 0.3s ease;
-          
+          padding: 4px;
+          border-radius: 4px;
+          transition: color 0.15s, background-color 0.15s;
+
           &:hover {
-            background: rgba(24, 144, 255, 0.1);
-            color: #1890ff;
+            background: #f0f0f0;
+            color: #3a82f8;
           }
         }
       }
     }
-    
+
     // 任务列表区域
     .scrum-stage-content {
-      padding: 12px;
-      
+      padding: 8px;
+
       &::-webkit-scrollbar {
-        width: 6px;
+        width: 4px;
       }
-      
+
       &::-webkit-scrollbar-track {
         background: transparent;
       }
-      
+
       &::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.15);
-        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.08);
+        border-radius: 2px;
       }
     }
-    
+
     // 添加任务按钮
     .task-creator-handler-wrap {
       background: transparent;
-      padding: 8px;
-      
+      padding: 6px;
+
       .task-creator-handler {
-        padding: 12px;
-        border-radius: 8px;
-        background: rgba(24, 144, 255, 0.05);
-        color: #1890ff;
+        padding: 8px 12px;
+        border-radius: 4px;
+        background: transparent;
+        color: rgba(0, 0, 0, 0.4);
         font-weight: 500;
-        transition: all 0.3s ease;
-        
+        transition: color 0.15s, background-color 0.15s;
+
         &:hover {
-          background: rgba(24, 144, 255, 0.12);
-          transform: translateY(-1px);
+          background: #f5f5f5;
+          color: #3a82f8;
         }
       }
     }
   }
-  
-  // 任务卡片美化
+
+  // 任务卡片
   .task.task-card {
-    margin: 0 0 12px 0;
+    margin: 0 0 8px 0;
     background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    border: 1px solid #f0f0f0;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     overflow: hidden;
-    
+
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      border-color: rgba(24, 144, 255, 0.2);
+      border-color: rgba(58, 130, 248, 0.25);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
     }
-    
+
     // 优先级指示条
     .task-priority {
-      width: 4px;
-      border-radius: 2px 0 0 2px;
+      width: 3px;
+      border-radius: 1.5px 0 0 1.5px;
     }
-    
+
     // 任务内容区
     .task-content-set {
-      padding: 14px 16px;
-      margin-left: 4px;
-      
+      padding: 10px 12px;
+      margin-left: 3px;
+
       .task-content-wrapper {
         .task-content {
           font-size: 14px;
-          line-height: 1.6;
+          line-height: 1.5;
           color: rgba(0, 0, 0, 0.85);
           font-weight: 500;
         }
       }
     }
-    
+
     // 任务信息区
     .task-info-wrapper {
-      padding: 0 16px 14px;
-      margin-left: 4px;
-      
+      padding: 0 12px 10px;
+      margin-left: 3px;
+
       .task-infos {
-        margin-top: 8px;
-        
+        margin-top: 6px;
+
         .icon-wrapper {
-          color: rgba(0, 0, 0, 0.45);
-          font-size: 13px;
-          transition: all 0.3s ease;
-          
+          color: rgba(0, 0, 0, 0.35);
+          font-size: 12px;
+          transition: color 0.15s;
+
           &:hover {
-            color: #1890ff;
+            color: #3a82f8;
           }
-          
+
           .anticon {
             margin-right: 4px;
           }
         }
-        
+
         .tag {
-          border-radius: 4px;
-          padding: 2px 8px;
+          border-radius: 3px;
+          padding: 1px 6px;
           font-size: 11px;
           font-weight: 500;
         }
       }
     }
-    
+
     // 完成状态
     &.done {
-      background: #f8f9fa;
-      
+      background: #fafafa;
+
       .task-content {
-        color: rgba(0, 0, 0, 0.45);
+        color: rgba(0, 0, 0, 0.35);
       }
     }
-    
+
     // 优先级样式
     &.warning {
-      border-left: 4px solid #faad14;
-      
+      border-left: 3px solid #faad14;
+
       .task-priority {
         background: #faad14;
       }
     }
-    
+
     &.error {
-      border-left: 4px solid #f5222d;
-      
+      border-left: 3px solid #f5222d;
+
       .task-priority {
         background: #f5222d;
       }
     }
   }
-  
+
   // 创建任务表单
   .task-creator-wrap {
     background: #ffffff;
-    border-radius: 10px;
-    margin: 0 0 12px 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 6px;
+    margin: 0 0 8px 0;
+    box-shadow: none;
+    border: 1px solid #f0f0f0;
     overflow: hidden;
-    
+
     .task-creator {
-      padding: 16px;
-      
+      padding: 12px;
+
       .ant-input {
-        border-radius: 8px;
-        border-color: #e8e8e8;
-        
+        border-radius: 4px;
+        border-color: #e0e0e0;
+
         &:focus {
-          border-color: #1890ff;
-          box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1);
+          border-color: #3a82f8;
+          box-shadow: none;
         }
       }
-      
+
       .executor-handler {
-        padding: 8px 12px;
-        border-radius: 8px;
+        padding: 6px 10px;
+        border-radius: 4px;
         background: #f5f5f5;
-        margin-bottom: 12px;
-        
+        margin-bottom: 8px;
+
         .avatar {
           border-radius: 50%;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          box-shadow: none;
         }
       }
-      
+
       .submit-set {
-        margin-top: 16px;
-        
+        margin-top: 12px;
+
         .ant-btn {
-          border-radius: 8px;
+          border-radius: 4px;
           font-weight: 500;
-          
+
           &.ant-btn-primary {
-            background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+            background: #3a82f8;
             border: none;
-            box-shadow: 0 4px 12px rgba(24, 144, 255, 0.35);
-            
+            box-shadow: none;
+
             &:hover {
-              box-shadow: 0 6px 16px rgba(24, 144, 255, 0.45);
+              background: #5a96fa;
             }
           }
         }
       }
     }
   }
-  
+
   // 侧边抽屉
   .info-drawer {
     .ant-drawer-content {
-      background: #f8f9fa;
+      background: #fafafa;
     }
-    
+
     .ant-drawer-header {
-      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-      padding: 20px 24px;
-      
+      background: #fff;
+      border-bottom: 1px solid #f0f0f0;
+      padding: 14px 20px;
+
       .ant-drawer-title {
         font-weight: 600;
-        font-size: 16px;
+        font-size: 15px;
       }
     }
-    
+
     .ant-drawer-body {
-      padding: 20px;
+      padding: 16px;
     }
-    
-    // 成员列表
+
     .member-list {
       .member-list-item {
-        padding: 12px 16px;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        margin-bottom: 4px;
-        
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.1s;
+        margin-bottom: 2px;
+
         &:hover {
-          background: rgba(24, 144, 255, 0.05);
+          background: #f5f5f5;
         }
-        
+
         .ant-avatar {
           border-radius: 50%;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          box-shadow: none;
         }
       }
     }
-    
-    // 配置菜单
+
     .config-wrapper {
       .config-menus {
         .menu-item {
           a {
-            padding: 12px 16px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.15s, background-color 0.15s;
             font-weight: 500;
             color: rgba(0, 0, 0, 0.65);
-            
+
             &:hover {
-              background: rgba(24, 144, 255, 0.08);
-              color: #1890ff;
+              background: #f5f5f5;
+              color: #3a82f8;
             }
-            
+
             .anticon {
-              font-size: 16px;
-              margin-right: 12px;
+              font-size: 15px;
+              margin-right: 10px;
             }
           }
         }
       }
     }
   }
-  
+
   // 表格视图
   &.task-table {
     .ant-table {
-      border-radius: 12px;
+      border-radius: 6px;
       overflow: hidden;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-      
+      border: 1px solid #f0f0f0;
+
       .ant-table-thead > tr > th {
-        background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
+        background: #fafafa;
         font-weight: 600;
-        color: rgba(0, 0, 0, 0.85);
-        padding: 16px;
+        color: rgba(0, 0, 0, 0.75);
+        padding: 12px 16px;
       }
-      
+
       .ant-table-tbody > tr > td {
-        padding: 16px;
-        transition: all 0.3s ease;
+        padding: 12px 16px;
+        transition: background-color 0.1s;
       }
-      
+
       .ant-table-tbody > tr:hover > td {
-        background: rgba(24, 144, 255, 0.04);
+        background: #fafafa;
       }
     }
   }
 }
 
-// ==================== 拖拽效果增强 ====================
+// ==================== 拖拽效果 - 收敛 ====================
 
-// 拖拽占位符样式（被拖拽元素留下的位置）
+// 拖拽占位符
 .task-ghost {
-  opacity: 0.5 !important;
-  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%) !important;
-  border: 2px dashed #1890ff !important;
-  border-radius: 10px !important;
-  box-shadow: inset 0 0 20px rgba(24, 144, 255, 0.1) !important;
-  transform: scale(0.98) !important;
-  transition: all 0.2s ease !important;
-  
+  opacity: 0.4 !important;
+  background: #f5f5f5 !important;
+  border: 1px dashed #ccc !important;
+  border-radius: 6px !important;
+
   &::after {
-    content: '放置到这里';
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #1890ff;
-    font-size: 13px;
-    font-weight: 500;
+    content: '';
   }
-  
+
   * {
     opacity: 0;
   }
@@ -467,213 +450,168 @@
 
 // 阶段列拖拽占位符
 .stage-ghost {
-  opacity: 0.5 !important;
-  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%) !important;
-  border: 2px dashed #1890ff !important;
-  border-radius: 12px !important;
-  box-shadow: inset 0 0 30px rgba(24, 144, 255, 0.15) !important;
-  transform: scale(0.98) !important;
-  transition: all 0.2s ease !important;
-  
+  opacity: 0.4 !important;
+  background: #f5f5f5 !important;
+  border: 1px dashed #ccc !important;
+  border-radius: 6px !important;
+
   div {
     display: none !important;
   }
-  
+
   &::after {
-    content: '放置列到这里';
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #1890ff;
-    font-size: 14px;
-    font-weight: 500;
+    content: '';
   }
 }
 
-// 正在拖拽的任务卡片样式
+// 正在拖拽的任务卡片
 .task-drag {
-  opacity: 0.95 !important;
+  opacity: 0.9 !important;
   background: #ffffff !important;
-  border: 2px solid #1890ff !important;
-  border-radius: 10px !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 10px 20px rgba(24, 144, 255, 0.3) !important;
-  transform: rotate(3deg) scale(1.05) !important;
+  border: 1px solid #3a82f8 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
   cursor: grabbing !important;
   z-index: 9999 !important;
   transition: none !important;
-  
+
   .task-priority {
-    width: 6px !important;
-  }
-  
-  .task-content {
-    color: #1890ff !important;
+    width: 4px !important;
   }
 }
 
-// 阶段列拖拽中样式
+// 阶段列拖拽中
 .stage-drag {
-  opacity: 0.95 !important;
+  opacity: 0.9 !important;
   background: #ffffff !important;
-  border: 2px solid #1890ff !important;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3), 0 10px 25px rgba(24, 144, 255, 0.4) !important;
-  transform: rotate(2deg) scale(1.02) !important;
+  border: 1px solid #3a82f8 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
   cursor: grabbing !important;
   z-index: 9999 !important;
   transition: none !important;
-}
-
-// 拖拽源列的样式（当一个任务被从列中拖出时）
-.scrum-stage:has(.task-drag) {
-  .scrum-stage-header {
-    background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%) !important;
-    
-    .stage-name {
-      color: #1890ff !important;
-    }
-  }
 }
 
 // 可放置区域高亮
 .scrum-stage-tasks,
 .scrum-stage-tasks-done {
-  min-height: 20px;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  
+  min-height: 16px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+
   &.sortable-drag-over {
-    background: rgba(24, 144, 255, 0.08) !important;
-    box-shadow: inset 0 0 0 2px #1890ff !important;
+    background: rgba(58, 130, 248, 0.06) !important;
+    border: 1px dashed rgba(58, 130, 248, 0.3) !important;
   }
 }
 
-// 拖拽时的光标样式
+// 拖拽光标
 .ui-sortable-handle {
   cursor: grab;
-  
+
   &:active {
     cursor: grabbing;
   }
 }
 
-// 拖拽排序动画
-.sortable-chosen {
-  animation: pulse-drag 1.5s ease-in-out infinite;
-}
-
-// ==================== 动画效果 ====================
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+// ==================== 简约动画 ====================
 
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-// 拖拽脉冲动画
-@keyframes pulse-drag {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(24, 144, 255, 0);
-  }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-// 任务卡片出现动画
-@keyframes taskAppear {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-// 拖拽完成后的弹跳动画
-@keyframes dropBounce {
-  0% {
-    transform: scale(1.05);
-  }
-  50% {
-    transform: scale(0.98);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-// 应用动画
 .scrum-stage {
-  animation: slideInUp 0.4s ease-out;
+  animation: fadeInUp 0.25s ease-out;
 }
 
 .task.task-card {
-  animation: fadeIn 0.3s ease-out;
-  
+  animation: fadeInUp 0.2s ease-out;
+
   &.sortable-chosen {
-    animation: none; // 拖拽时取消淡入动画
-  }
-  
-  &.drop-complete {
-    animation: dropBounce 0.3s ease-out;
+    animation: none;
   }
 }
 
-// 新创建的任务动画
-.task-new-created {
-  animation: taskAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-// ==================== 拖拽滚动区域优化 ====================
-
-.board-scrum-stages {
-  // 拖拽时的滚动提示
-  &.dragging-stage {
-    cursor: grabbing;
-    
-    &::-webkit-scrollbar {
-      height: 8px;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: #1890ff;
-    }
-  }
-}
-
-// 拖拽时的遮罩（防止误操作）
-.drag-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: transparent;
-  z-index: 9998;
-  pointer-events: none;
-}
-
-// ==================== 响应式拖拽优化 ====================
-
+// 响应式
 @media (max-width: 768px) {
   .task-drag {
-    transform: scale(1.02) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
   }
-  
+
   .stage-drag {
-    transform: scale(1.01) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
+}
+
+// ==================== 批量操作工具栏 ====================
+
+.batch-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  .batch-info {
+    font-weight: 600;
+    color: #3a82f8;
+    margin-right: 8px;
+    font-size: 13px;
+  }
+
+  .ant-btn {
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 12px;
+  }
+}
+
+// ==================== 批量选择样式 ====================
+
+.batch-select-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 2px;
+  transition: color 0.15s;
+
+  &:hover {
+    color: #3a82f8 !important;
+  }
+}
+
+.task.task-card.batch-selected {
+  border-color: #3a82f8 !important;
+  background: rgba(58, 130, 248, 0.04) !important;
+  box-shadow: 0 0 0 1px rgba(58, 130, 248, 0.2) !important;
+}
+
+// ==================== 拖拽完成动画 ====================
+
+.task.task-card.drop-complete {
+  animation: dropComplete 0.3s ease-out;
+}
+
+@keyframes dropComplete {
+  0% {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(58, 130, 248, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   }
 }

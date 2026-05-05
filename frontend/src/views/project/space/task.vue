@@ -23,6 +23,10 @@
             </div>
             <section class="nav-body">
                 <ul class="nav-wrapper nav nav-underscore pull-left">
+                    <li class=""><a class="app" data-app="home"
+                                    @click="$router.push('/project/space/index/' + code)">
+                        概览</a>
+                    </li>
                     <li class="actives"><a class="app" data-app="tasks">任务</a></li>
                     <li class=""><a class="app" data-app="works"
                                     @click="$router.push('/project/space/files/' + code)">
@@ -53,6 +57,23 @@
                     <a-icon type="search"></a-icon>
                     <span> 筛选</span>
                 </a>
+                <a class="footer-item" v-if="viewType === 'task-board'" @click="toggleBatchMode">
+                    <a-icon :type="batchMode ? 'check-square' : 'check-circle'"/>
+                    <span> {{batchMode ? '退出多选' : '多选'}}</span>
+                </a>
+                <a-dropdown v-if="viewType === 'task-board'" :trigger="['click']" placement="bottomCenter">
+                    <a class="footer-item">
+                        <a-icon type="sort-ascending"/>
+                        <span> 排序</span>
+                    </a>
+                    <a-menu slot="overlay" @click="handleSort" :selectedKeys="[sortMode]">
+                        <a-menu-item key="default">默认排序</a-menu-item>
+                        <a-menu-item key="pri-desc">优先级 高→低</a-menu-item>
+                        <a-menu-item key="pri-asc">优先级 低→高</a-menu-item>
+                        <a-menu-item key="end-asc">截止时间 近→远</a-menu-item>
+                        <a-menu-item key="end-desc">截止时间 远→近</a-menu-item>
+                    </a-menu>
+                </a-dropdown>
                 <a class="footer-item" :class="{active:slideMenuKey == 'member'}" @click="visibleDraw('member')">
                     <a-icon type="user"></a-icon>
                     <span> {{projectMembers ? projectMembers.length : 0}}</span>
@@ -64,6 +85,15 @@
             </div>
         </div>
         <wrapper-content :showHeader="false">
+            <!-- 批量操作工具栏 -->
+            <div class="batch-action-bar" v-if="batchMode && batchSelectedTasks.length > 0">
+                <span class="batch-info">已选 {{batchSelectedTasks.length}} 项</span>
+                <a-button size="small" @click="batchSetExecutor" icon="user">批量指派</a-button>
+                <a-button size="small" @click="batchSetDone(1)" icon="check">标记完成</a-button>
+                <a-button size="small" @click="batchSetDone(0)" icon="undo">标记未完成</a-button>
+                <a-button size="small" type="danger" @click="batchRecycle" icon="delete">移到回收站</a-button>
+                <a-button size="small" type="default" @click="clearBatchSelection">取消选择</a-button>
+            </div>
             <draggable v-show="viewType == 'task-board'" v-model="taskStages"
                        :group="{name:'stages'}"
                        :filter="'.undraggables'"
@@ -153,10 +183,14 @@
                                                  :index="taskIndex"
                                                  :id="task.code"
                                                  :key="task. code"
-                                                 :class="showTaskPri(task.pri)"
+                                                 :class="[showTaskPri(task.pri), {'batch-selected': batchSelectedTasks.includes(task.code)}]"
                                                  v-if="!task.done && task.canRead"
-                                                 @click.stop="taskDetail(task.code,index)"
+                                                 @click.stop="handleTaskClick(task, index)"
                                             >
+                                                <div class="batch-select-check" v-if="batchMode" @click.stop="toggleBatchSelect(task)">
+                                                    <a-icon :type="batchSelectedTasks.includes(task.code) ? 'check-square' : 'border'"
+                                                            :style="{fontSize: '16px', color: batchSelectedTasks.includes(task.code) ? '#3a82f8' : '#bbb'}"/>
+                                                </div>
                                                 <div class="task-priority bg-priority-0"></div>
                                                 <a-tooltip :placement="index > 0 ? 'top':'right'">
                                                     <template slot="title">
@@ -204,7 +238,7 @@
                                                            <a-icon type="message"/>
                                                         </span>
                                                             <span class="icon-wrapper muted"
-                                                                  v-if="task.childCount[0] > 0">
+                                                                  v-if="task.childCount && task.childCount[0] > 0">
                                                              <a-icon type="bars"></a-icon>
                                                             <span>{{task.childCount[1]}}/{{task.childCount[0]}}</span>
                                                        </span>
@@ -212,11 +246,11 @@
                                                                   :key="tag.code"
                                                             >
                                                                 <a-badge status="success"
-                                                                         :class="`badge-${tag.tag.color}`"/>
-                                                               {{tag.tag.name}}
+                                                                         :class="`badge-${tag.tag ? tag.tag.color : tag.color}`"/>
+                                                               {{tag.tag ? tag.tag.name : tag.name}}
                                                            </span>
-                                                            <span :class="'icon-wrapper text text-' + task.task_execute.color"
-                                                                  v-if="task.execute_state > 0">{{ task.task_execute_name }}</span>
+                                                            <span :class="'icon-wrapper text text-' + (task.task_execute && task.task_execute.color)"
+                                                                  v-if="task.execute_state > 0 && task.task_execute">{{ task.task_execute_name }}</span>
                                                             <span class="icon-wrapper muted" v-if="task.like">
                                                            <a-icon type="like"/>
                                                                 <span>{{task.like}}</span>
@@ -321,8 +355,8 @@
                                                     </div>
                                                     <div class="task-info-wrapper clearfix">
                                                         <div class="task-infos">
-                                            <span class="tag muted" :class="'tag-color-'+ tag.color"
-                                                  v-for="(tag,tag_index) in task.task_tag_item_list" :key="tag.code"> {{ tag.name }} </span>
+                                            <span class="tag muted" :class="'tag-color-'+ (tag.tag ? tag.tag.color : tag.color)"
+                                                  v-for="(tag,tag_index) in (task.task_tag_item_list || task.tags)" :key="tag.code"> {{ tag.tag ? tag.tag.name : tag.name }} </span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -624,7 +658,7 @@
     import {list as getTaskStages, sort, tasks as getTasks} from "@/api/taskStages";
     import {read as getProject} from "@/api/project";
     import {inviteMember, list as getProjectMembers, removeMember} from "@/api/projectMember";
-    import {save as createTask, taskDone, sort as sortTask, recycleBatch, batchAssignTask} from "@/api/task";
+    import {save as createTask, taskDone, sort as sortTask, recycleBatch, batchAssignTask, batchDone} from "@/api/task";
     import {save as createState, edit as editStage, del as delStage} from "@/api/taskStages";
     import {checkResponse, getApiUrl, getAuthorization, getUploadUrl} from "@/assets/js/utils";
     import {formatTaskTime} from "@/assets/js/dateTime";
@@ -720,6 +754,13 @@
                     modalStatus: false,
                     modalTitle: '设置任务执行者',
                 },
+
+                /*批量操作*/
+                batchMode: false,
+                batchSelectedTasks: [],
+
+                /*排序*/
+                sortMode: 'default',
             }
         },
         computed: {
@@ -797,7 +838,6 @@
                 }
             },
             viewRefresh() {
-                console.log('viewRefresh');
                 // this.getTaskStages(false);
             },
             inviteMemberDraw: {
@@ -839,7 +879,6 @@
             dragscroll2: function (el) {
             // el.oncontextmenu = function (ev) {
             el.onmousedown = function (ev) {
-                console.log(ev.target.classList);
                 const exclude = [
                 "task-content",
                 "task-content-set",
@@ -916,8 +955,8 @@
             },
             getProjectMembers() {
                 getProjectMembers({projectCode: this.code, pageSize: 100}).then((res) => {
-                    this.projectMembers = res.data.list;
-                    this.projectMembersCopy = res.data.list;
+                    this.projectMembers = res.data.list || [];
+                    this.projectMembersCopy = res.data.list || [];
                 });
             },
             getTaskStages(showLoading = true) {
@@ -1003,7 +1042,6 @@
                 return tasks.filter(item => item.done == done);
             },
             taskSearchAction(value) {
-                console.log(value);
                 this.taskSearchParams = value;
                 this.getTaskStages();
             },
@@ -1079,10 +1117,8 @@
                 }, 2000);
                 app.createTaskLoading = true;
                 const taskData = Object.assign({}, app.task);
-                console.log('创建任务请求参数:', taskData);
                 createTask(taskData).then(res => {
                     app.createTaskLoading = false;
-                    console.log('创建任务响应:', res);
                     const result = checkResponse(res);
                     if (result) {
                         app.$message.destroy();
@@ -1093,12 +1129,10 @@
                     } else {
                         // 创建失败，显示后端返回的错误信息
                         const errMsg = (res && res.msg) ? res.msg : '未知错误';
-                        console.warn('创建任务失败:', res);
                         app.$message.error('创建任务失败：' + errMsg, 3);
                     }
                 }).catch(err => {
                     app.createTaskLoading = false;
-                    console.error('创建任务异常:', err);
                     app.$message.error('创建任务异常，请检查网络连接', 3);
                 });
             },
@@ -1348,7 +1382,6 @@
             },
             taskSort(event) {
                 const list = this.getPreAndNextCode(event);
-                console.log(list);
                 const toStageCode = event.to.parentNode.parentNode.parentNode.getAttribute('id');
                 sortTask({preTaskCode: list[0], nextTaskCode: list[1], toStageCode: toStageCode});
                 // 移除拖拽类
@@ -1450,7 +1483,6 @@
                     return
                 }
                 if (info.file.status === 'done') {
-                    console.log(info);
                     this.uploadLoading = false;
                     if (checkResponse(info.file.response, true)) {
                         const count = info.file.response.data;
@@ -1476,7 +1508,111 @@
                     return statusInfo.color;
                 }
                 return '';
-            }
+            },
+            // ====== 批量操作 ======
+            toggleBatchMode() {
+                this.batchMode = !this.batchMode;
+                if (!this.batchMode) {
+                    this.batchSelectedTasks = [];
+                }
+            },
+            handleTaskClick(task, stageIndex) {
+                if (this.batchMode) {
+                    this.toggleBatchSelect(task);
+                } else {
+                    this.taskDetail(task.code, stageIndex);
+                }
+            },
+            toggleBatchSelect(task) {
+                const idx = this.batchSelectedTasks.indexOf(task.code);
+                if (idx === -1) {
+                    this.batchSelectedTasks.push(task.code);
+                } else {
+                    this.batchSelectedTasks.splice(idx, 1);
+                }
+            },
+            clearBatchSelection() {
+                this.batchSelectedTasks = [];
+            },
+            batchSetExecutor() {
+                if (!this.batchSelectedTasks.length) return;
+                this.projectMemberModal.modalStatus = true;
+                this.projectMemberModal.modalTitle = '批量设置执行者';
+            },
+            batchSetDone(done) {
+                if (!this.batchSelectedTasks.length) return;
+                const action = done ? '完成' : '重做';
+                this.$confirm({
+                    title: `批量${action}`,
+                    content: `确定要将选中的 ${this.batchSelectedTasks.length} 个任务标记为${action}吗？`,
+                    onOk: () => {
+                        batchDone({taskCodes: JSON.stringify(this.batchSelectedTasks), done: done}).then(res => {
+                            const count = res.data && res.data.count ? res.data.count : this.batchSelectedTasks.length;
+                            this.$message.success(`已批量${action} ${count} 个任务`);
+                            this.batchSelectedTasks = [];
+                            this.getTaskStages(false);
+                        });
+                        return Promise.resolve();
+                    }
+                });
+            },
+            batchRecycle() {
+                if (!this.batchSelectedTasks.length) return;
+                this.$confirm({
+                    title: '批量移到回收站',
+                    content: `确定要将选中的 ${this.batchSelectedTasks.length} 个任务移到回收站吗？`,
+                    okType: 'danger',
+                    onOk: () => {
+                        recycleBatch({taskCodes: JSON.stringify(this.batchSelectedTasks)}).then(res => {
+                            if (checkResponse(res)) {
+                                this.$message.success(`已移到回收站 ${this.batchSelectedTasks.length} 个任务`);
+                                this.batchSelectedTasks = [];
+                                this.getTaskStages(false);
+                            }
+                        });
+                        return Promise.resolve();
+                    }
+                });
+            },
+            // ====== 排序 ======
+            handleSort({key}) {
+                this.sortMode = key;
+                if (key === 'default') {
+                    this.getTaskStages();
+                    return;
+                }
+                this.taskStages.forEach(stage => {
+                    const sortFn = this.getSortFunction(key);
+                    if (stage.unDoneTasks) {
+                        stage.unDoneTasks.sort(sortFn);
+                    }
+                    if (stage.doneTasks) {
+                        stage.doneTasks.sort(sortFn);
+                    }
+                });
+            },
+            getSortFunction(mode) {
+                switch (mode) {
+                    case 'pri-desc':
+                        return (a, b) => (b.pri || 0) - (a.pri || 0);
+                    case 'pri-asc':
+                        return (a, b) => (a.pri || 0) - (b.pri || 0);
+                    case 'end-asc':
+                        return (a, b) => {
+                            if (!a.end_time) return 1;
+                            if (!b.end_time) return -1;
+                            return moment(a.end_time).valueOf() - moment(b.end_time).valueOf();
+                        };
+                    case 'end-desc':
+                        return (a, b) => {
+                            if (!a.end_time) return 1;
+                            if (!b.end_time) return -1;
+                            return moment(b.end_time).valueOf() - moment(a.end_time).valueOf();
+                        };
+                    default:
+                        return () => 0;
+                }
+            },
         }
     }
 </script>

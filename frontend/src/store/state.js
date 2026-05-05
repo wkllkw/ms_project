@@ -13,5 +13,5 @@ export default {
     pageLoading: false, // 页面加载loading
     socketAction: '',
     boundClient: false,//是否绑定client
-
+    permissionNodes: getStore('permissionNodes', true) || [],//用户权限节点列表
 }

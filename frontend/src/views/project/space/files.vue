@@ -24,13 +24,15 @@
             </div>
             <section class="nav-body">
                 <ul class="nav-wrapper nav nav-underscore pull-left">
+                    <li><a class="app" data-app="home"
+                           @click="$router.push('/project/space/index/' + code)">概览</a></li>
                     <li><a class="app" data-app="tasks"
                            @click="$router.push('/project/space/task/' + code)">任务</a></li>
                     <li class="actives"><a class="app" data-app="works">
                         文件</a>
                     <li><a class="app" data-app="build"
                            @click="$router.push('/project/space/overview/' + code)">
-                        概览</a>
+                        报表</a>
                     </li>
                     <li class=""><a class="app" data-app="build"
                                     @click="$router.push('/project/space/features/' + code)">
@@ -53,7 +55,9 @@
                     <div class="header">
                         <span class="title">我的文件</span>
                         <div class="header-actions">
-                            <!--<a><a-icon type="upload"></a-icon> 上传文件</a>-->
+                            <a @click="recycleModal.modalStatus = true" style="margin-right: 12px; cursor: pointer; color: rgba(0,0,0,0.45);">
+                                <a-icon type="delete"/> 回收站
+                            </a>
                             <a-button id="upload-file" icon="up-circle" type="dashed">上传</a-button>
                         </div>
                     </div>
@@ -166,6 +170,16 @@
                 </div>
             </div>
         </wrapper-content>
+        <!--回收站-->
+        <a-modal
+                class="recycle-bin-modal"
+                :width="800"
+                v-model="recycleModal.modalStatus"
+                :title="recycleModal.modalTitle"
+                :footer="null"
+        >
+            <recycle-bin v-if="recycleModal.modalStatus" :code="code" @update="getFiles"></recycle-bin>
+        </a-modal>
     </div>
 </template>
 
@@ -180,6 +194,7 @@
     import pagination from "@/mixins/pagination";
     import {notice} from "../../../assets/js/notice";
     import projectSelect from '@/components/project/projectSelect'
+    import RecycleBin from '@/components/project/recycleBin'
 
 
 
@@ -195,10 +210,15 @@
                 project: {task_board_theme: 'simple'},
                 currentFileIndex: {},
                 files: [],
+                recycleModal: {
+                    modalStatus: false,
+                    modalTitle: '查看回收站',
+                },
             }
         },
         components: {
             projectSelect,
+            RecycleBin,
         },
         computed: {
             ...mapState({

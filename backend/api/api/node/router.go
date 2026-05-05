@@ -21,8 +21,11 @@ func (*RouterNode) Route(r *gin.Engine) {
 	group.Use(midd.TokenVerify())
 	h := New()
 	group.POST("/node", h.list)
-	group.POST("/node/allList", h.allList)
-	group.POST("/node/save", h.save)
-	group.POST("/node/clear", h.clear)
+	// 节点保存/清理需要 system.node 节点权限
+	adminGroup := group.Group("")
+	adminGroup.Use(midd.NodeVerify("system.node"))
+	adminGroup.POST("/node/allList", h.allList)
+	adminGroup.POST("/node/save", h.save)
+	adminGroup.POST("/node/clear", h.clear)
 }
 

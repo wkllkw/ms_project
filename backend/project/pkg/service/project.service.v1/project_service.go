@@ -109,7 +109,7 @@ func (p *ProjectService) FindProjectByMemId(ctx context.Context, msg *project.Pr
 		v.OrganizationCode, _ = encrypts.EncryptInt64(pam.OrganizationCode, model.AESKey)
 		v.JoinTime = tms.FormatByMill(pam.JoinTime)
 		v.IsOwner = pam.IsOwner
-		v.OwnerName = msg.MemberName
+		v.OwnerName = pam.OwnerName
 		v.Order = int32(pam.Sort)
 		v.CreateTime = tms.FormatByMill(pam.CreateTime)
 	}
@@ -231,11 +231,26 @@ func (ps *ProjectService) FindProjectDetail(ctx context.Context, msg *project.Pr
 		return nil, err
 	}
 	//去user模块去找了
-	//TODO 优化 收藏的时候 可以放入redis
-	isCollect, err := ps.projectRepo.FindCollectByPidAndMemId(c, projectCode, memberId)
-	if err != nil {
-		zap.L().Error("project FindProjectDetail FindCollectByPidAndMemId error", zap.Error(err))
-		return nil, errs.GrpcError(model.DBError)
+	// 优先从 Redis 缓存获取收藏状态
+	collectCacheKey := model.CollectRedisKey + strconv.FormatInt(memberId, 10) + "_" + strconv.FormatInt(projectCode, 10)
+	isCollect := false
+	cacheVal, err := ps.cache.Get(c, collectCacheKey)
+	if err == nil && cacheVal != "" {
+		// 缓存命中
+		isCollect = cacheVal == "1"
+	} else {
+		// 缓存未命中，查询数据库
+		isCollect, err = ps.projectRepo.FindCollectByPidAndMemId(c, projectCode, memberId)
+		if err != nil {
+			zap.L().Error("project FindProjectDetail FindCollectByPidAndMemId error", zap.Error(err))
+			return nil, errs.GrpcError(model.DBError)
+		}
+		// 写入 Redis 缓存
+		collectVal := "0"
+		if isCollect {
+			collectVal = "1"
+		}
+		_ = ps.cache.Put(c, collectCacheKey, collectVal, model.CollectRedisExpire)
 	}
 	if isCollect {
 		projectAndMember.Collected = model.Collected

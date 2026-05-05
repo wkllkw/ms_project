@@ -1,20 +1,20 @@
 body {
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
 }
 
-// ========== 路由过渡动画 ==========
+// ========== 路由过渡动画（淡入+微位移） ==========
 .router-fade-enter-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .router-fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
 .router-fade-enter {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(4px);
 }
 
 .router-fade-leave-to {
@@ -22,14 +22,18 @@ body {
 }
 
 .router-fades-enter-active {
-  transition: opacity 0.35s ease;
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .router-fades-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
-.router-fades-enter,
+.router-fades-enter {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 .router-fades-leave-to {
   opacity: 0;
 }
@@ -45,12 +49,11 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 3px;
-  transition: background 0.3s;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.2);
   }
 }
 
@@ -71,22 +74,30 @@ body {
   padding: 48px 0;
 
   .empty-icon {
-    font-size: 48px;
+    font-size: 40px;
     color: #d9d9d9;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
 
   .empty-text {
-    font-size: 14px;
-    color: #999;
-    margin-bottom: 16px;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.35);
+    margin-bottom: 12px;
   }
 }
 
 // ========== 选中高亮效果 ==========
 ::selection {
-  background: rgba(24, 144, 255, 0.2);
+  background: rgba(58, 130, 248, 0.15);
   color: inherit;
+}
+
+// ========== 全局聚焦光环 ==========
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-select-selection:focus,
+.ant-picker-focused {
+  box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.1) !important;
 }
 
 .ant-layout{
@@ -107,7 +118,6 @@ body {
 //Text
 .muted {
   color: rgba(0, 0, 0, 0.45);
-  //font-weight: 400;
 }
 
 .text-grey {
@@ -175,8 +185,8 @@ body {
 
 .alert-white {
   background: #fff;
-  border: 1px solid #dedede;
-  border-left: solid 3px #338fe5;
+  border: 1px solid #e0e0e0;
+  border-left: solid 3px #3a82f8;
 
   .ant-alert-message {
     margin: 5px 5px 5px 5px;
@@ -222,9 +232,6 @@ body {
 
 .middle-btn {
   min-width: 66px;
-  //min-height: 42px;
-  //min-width: 90px;
-  //height: 35px !important;
 }
 
 .ant-btn-lg {
@@ -232,9 +239,9 @@ body {
 }
 
 .disabled-btn {
-  background-color: #d9d9d9 !important;
-  border-color: #d9d9d9 !important;
-  color: #fff !important;
+  background-color: #e8e8e8 !important;
+  border-color: #e8e8e8 !important;
+  color: rgba(0, 0, 0, 0.25) !important;
 }
 
 //Form
@@ -296,7 +303,7 @@ body {
 
 //Drowdown
 .ant-dropdown-menu-item {
-  color: grey;
+  color: rgba(0, 0, 0, 0.55);
 }
 
 .field-right-menu {
@@ -348,7 +355,7 @@ body {
 
 .badge-blue {
   .ant-badge-status-dot {
-    background-color: #1890ff;
+    background-color: #3a82f8;
   }
 }
 
@@ -406,9 +413,11 @@ body {
 
   &.ant-modal {
     padding-bottom: 0;
+    top: 30px;
   }
 
   .ant-modal-content {
+    overflow: visible;
     .ant-modal-body {
       padding: 0;
     }
@@ -421,16 +430,16 @@ body {
 }
 
 .project-navigation {
-  border-bottom: 1px solid #D9D9D9;
+  border-bottom: 1px solid #f0f0f0;
   z-index: 1;
-  background-color: #F5F5F5;
+  background-color: #fff;
   transition: right 218ms ease;
   position: fixed;
   width: 100%;
 }
 
 .project-navigation .ivu-breadcrumb-item-separator {
-  color: #383838;
+  color: rgba(0, 0, 0, 0.35);
 }
 
 .project-navigation .ivu-breadcrumb > span:last-child {
@@ -491,7 +500,7 @@ body {
   height: 50px;
   margin: 0;
   padding: 15px 0;
-  color: #383838;
+  color: rgba(0, 0, 0, 0.65);
   font-size: 15px;
   font-weight: normal;
 }
@@ -515,18 +524,19 @@ body {
   bottom: 0;
   height: 3px;
   width: 100%;
-  border-bottom: 0 solid #3da8f5;
+  border-bottom: 0 solid #3a82f8;
   content: '';
   opacity: 0;
+  transition: opacity 0.2s ease, border-width 0.2s ease;
 }
 
 .project-navigation .nav-underscore > li > a:hover:after, .project-navigation .nav-underscore > .actives > a:after {
-  border-width: 3px;
+  border-width: 2px;
   opacity: 1;
 }
 
 .simple {
   .project-navigation {
-    background: hsla(0, 0%, 100%, .95);
+    background: #fff;
   }
 }

@@ -21,10 +21,13 @@ func (*RouterMenu) Route(r *gin.Engine) {
 	group.Use(midd.TokenVerify())
 	h := New()
 	group.POST("/menu/menu", h.menu)
-	group.POST("/menu/menuAdd", h.menuAdd)
-	group.POST("/menu/menuEdit", h.menuEdit)
-	group.POST("/menu/menuDel", h.menuDel)
-	group.POST("/menu/menuForbid", h.menuForbid)
-	group.POST("/menu/menuResume", h.menuResume)
+	// 菜单增删改需要 system.menu 节点权限
+	adminGroup := group.Group("")
+	adminGroup.Use(midd.NodeVerify("system.menu"))
+	adminGroup.POST("/menu/menuAdd", h.menuAdd)
+	adminGroup.POST("/menu/menuEdit", h.menuEdit)
+	adminGroup.POST("/menu/menuDel", h.menuDel)
+	adminGroup.POST("/menu/menuForbid", h.menuForbid)
+	adminGroup.POST("/menu/menuResume", h.menuResume)
 }
 

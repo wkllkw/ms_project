@@ -2,9 +2,11 @@ package account
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"test.com/project-api/internal/database/gorms"
 	"test.com/project-api/pkg/codecs"
 	"test.com/project-api/pkg/model"
@@ -39,15 +41,127 @@ func (h *HandlerAccount) list(c *gin.Context) {
 	page.Bind(c)
 	db := gorms.GetDB()
 	query := db.Model(&memberRow{})
+	// 数据隔离：按组织过滤成员列表
+	memberId := c.GetInt64("memberId")
+	orgCodeStr, _ := c.Get("organizationCode")
+	var orgCode int64
+	if orgStr, ok := orgCodeStr.(string); ok && orgStr != "" {
+		orgCode, _ = codecs.DecryptInt64(orgStr)
+	}
+
+	// 判断当前用户是否为非个人组织的拥有者/管理员
+	isOrgAdmin := false
+	if orgCode > 0 {
+		var personal int64
+		_ = db.Table("ms_organization").Select("personal").Where("id=?", orgCode).Scan(&personal).Error
+		if personal == 0 {
+			// 非个人组织，检查是否是拥有者
+			var ownerCount int64
+			_ = db.Table("ms_member_account").Where("member_code=? AND organization_code=? AND is_owner=1", memberId, orgCode).Count(&ownerCount).Error
+			if ownerCount > 0 {
+				isOrgAdmin = true
+			}
+		}
+	}
+
+	if isOrgAdmin {
+		// 组织管理员：显示同组织所有成员 + 仅属于个人组织的用户（新注册未被分配的用户）
+		// 1. 同组织的成员
+		var orgMemberIds []int64
+		_ = db.Table("ms_member_account").Select("DISTINCT member_code").Where("organization_code=?", orgCode).Scan(&orgMemberIds).Error
+		// 2. 仅属于个人组织的用户（没有加入任何非个人组织的用户）
+		var personalOnlyMemberIds []int64
+		_ = db.Raw(`
+			SELECT DISTINCT ma.member_code
+			FROM ms_member_account ma
+			JOIN ms_organization o ON o.id = ma.organization_code
+			WHERE o.personal = 1
+			  AND ma.member_code NOT IN (
+			    SELECT DISTINCT ma2.member_code
+			    FROM ms_member_account ma2
+			    JOIN ms_organization o2 ON o2.id = ma2.organization_code
+			    WHERE o2.personal = 0
+			  )
+		`).Scan(&personalOnlyMemberIds).Error
+		// 合并两个列表
+		allIds := append(orgMemberIds, personalOnlyMemberIds...)
+		if len(allIds) > 0 {
+			query = query.Where("id IN ?", allIds)
+		}
+	} else {
+		// 普通用户：按组织成员过滤
+		var orgMemberIds []int64
+		if orgCode > 0 {
+			_ = db.Table("ms_member_account").Select("DISTINCT member_code").Where("organization_code=?", orgCode).Scan(&orgMemberIds).Error
+		}
+		if len(orgMemberIds) > 0 {
+			query = query.Where("id IN ?", orgMemberIds)
+		} else {
+			// 没有组织成员记录，退回项目成员过滤
+			var userProjectIds []int64
+			_ = db.Table("ms_project_member").Select("DISTINCT project_code").Where("member_code=?", memberId).Scan(&userProjectIds).Error
+			if len(userProjectIds) > 0 {
+				query = query.Where("id IN (SELECT DISTINCT member_code FROM ms_project_member WHERE project_code IN ?)", userProjectIds)
+			} else {
+				query = query.Where("id=?", memberId)
+			}
+		}
+	}
 	if keyword := c.PostForm("keyword"); keyword != "" {
 		query = query.Where("name like ? or account like ? or email like ? or mobile like ?", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 	}
+
+	// 处理 searchType 筛选
+	searchType := c.PostForm("searchType")
+	switch searchType {
+	case "4": // 按部门筛选
+		departmentCode := c.PostForm("departmentCode")
+		if departmentCode != "" {
+			depId, err := codecs.DecryptInt64(departmentCode)
+			if err == nil {
+				query = query.Where("id IN (SELECT member_id FROM ms_department_member WHERE department_id=?)", depId)
+			}
+		}
+	case "2": // 未分配部门的成员
+		query = query.Where("id NOT IN (SELECT member_id FROM ms_department_member)")
+	case "3": // 停用的成员
+		query = query.Where("status = 0")
+	case "1": // 新加入的成员（最近7天）
+		sevenDaysAgo := time.Now().AddDate(0, 0, -7).UnixMilli()
+		query = query.Where("create_time >= ?", sevenDaysAgo)
+	}
+
 	var total int64
 	_ = query.Count(&total).Error
 	var list []memberRow
 	_ = query.Order("id desc").Limit(int(page.PageSize)).Offset(int((page.Page - 1) * page.PageSize)).Find(&list).Error
+
+	// 为每个成员查询部门信息和权限角色
 	out := make([]gin.H, 0, len(list))
 	for _, m := range list {
+		// 查询成员所属部门
+		var deptNames []string
+		type deptRow struct {
+			Name string
+		}
+		var depts []deptRow
+		db.Table("ms_department").Select("ms_department.name").
+			Joins("JOIN ms_department_member ON ms_department_member.department_id = ms_department.id").
+			Where("ms_department_member.member_id = ? AND ms_department.deleted = 0", m.Id).
+			Find(&depts)
+		for _, d := range depts {
+			deptNames = append(deptNames, d.Name)
+		}
+		deptStr := ""
+		for i, dn := range deptNames {
+			if i > 0 {
+				deptStr += ", "
+			}
+			deptStr += dn
+		}
+		// 查询成员的权限角色
+		authId := getMemberAuthId(db, m.Id)
+
 		out = append(out, gin.H{
 			"id":          m.Id,
 			"code":        codecs.EncryptInt64(m.Id),
@@ -58,16 +172,35 @@ func (h *HandlerAccount) list(c *gin.Context) {
 			"avatar":      m.Avatar,
 			"status":      m.Status,
 			"create_time": m.CreateTime,
+			"departments": deptStr,
+			"authorize":   authId,
 		})
 	}
-	c.JSON(http.StatusOK, result.Success(gin.H{"list": out, "total": total, "authList": []any{}}))
+	c.JSON(http.StatusOK, result.Success(gin.H{"list": out, "total": total, "authList": authListFromDB(db)}))
 }
 
 func (h *HandlerAccount) allList(c *gin.Context) {
 	result := &common.Result{}
 	db := gorms.GetDB()
+	memberId := c.GetInt64("memberId")
+	// 数据隔离：优先按部门过滤，只返回与当前用户同部门的成员
+	var deptIds []int64
+	_ = db.Table("ms_department_member").Select("DISTINCT department_id").Where("member_id=?", memberId).Scan(&deptIds).Error
 	var list []memberRow
-	_ = db.Order("id desc").Limit(300).Find(&list).Error
+	if len(deptIds) > 0 {
+		_ = db.Where("id IN (SELECT DISTINCT member_id FROM ms_department_member WHERE department_id IN ?)", deptIds).
+			Order("id desc").Limit(300).Find(&list).Error
+	} else {
+		// 没有部门的用户，退回到项目成员过滤
+		var userProjectIds []int64
+		_ = db.Table("ms_project_member").Select("DISTINCT project_code").Where("member_code=?", memberId).Scan(&userProjectIds)
+		if len(userProjectIds) > 0 {
+			_ = db.Where("id IN (SELECT DISTINCT member_code FROM ms_project_member WHERE project_code IN ?)", userProjectIds).
+				Order("id desc").Limit(300).Find(&list).Error
+		} else {
+			list = []memberRow{}
+		}
+	}
 	out := make([]gin.H, 0, len(list))
 	for _, m := range list {
 		out = append(out, gin.H{
@@ -149,10 +282,18 @@ func (h *HandlerAccount) auth(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "id必填"))
 		return
 	}
-	id, err := codecs.DecryptInt64(idStr)
-	if err != nil || id == 0 {
-		c.JSON(http.StatusOK, result.Fail(400, "id无效"))
-		return
+	// id 可能是加密的 code，也可能是原始数字 ID
+	var id int64
+	if decId, err := codecs.DecryptInt64(idStr); err == nil && decId > 0 {
+		id = decId
+	} else {
+		// 尝试作为原始数字解析
+		parsedId, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || parsedId == 0 {
+			c.JSON(http.StatusOK, result.Fail(400, "id无效"))
+			return
+		}
+		id = parsedId
 	}
 	// 将权限角色ID存储到 ms_project_member 的 authorize 字段（全局授权）
 	db := gorms.GetDB().WithContext(c.Request.Context())
@@ -243,4 +384,60 @@ func (h *HandlerAccount) joinByInviteLink(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, result.Success([]int{}))
+}
+
+// authListRow 权限角色表
+type authListRow struct {
+	Id        int64  `gorm:"primaryKey;autoIncrement"`
+	Title     string `gorm:"column:title"`
+	Desc      string `gorm:"column:desc"`
+	Status    int    `gorm:"column:status"`
+	IsDefault int    `gorm:"column:is_default"`
+}
+
+func (*authListRow) TableName() string { return "ms_project_auth" }
+
+// authListFromDB 从数据库查询所有启用的权限角色
+func authListFromDB(db *gorm.DB) []gin.H {
+	var rows []authListRow
+	_ = db.Where("status=1").Order("id asc").Find(&rows).Error
+	out := make([]gin.H, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, gin.H{
+			"id":    r.Id,
+			"title": r.Title,
+		})
+	}
+	return out
+}
+
+// projectMemberAuthRow 用于查询成员的权限角色
+type projectMemberAuthRow struct {
+	Authorize string `gorm:"column:authorize"`
+}
+
+// getMemberAuthId 获取成员的权限角色ID
+func getMemberAuthId(db *gorm.DB, memberId int64) int64 {
+	// 优先查找 is_owner=1 的记录
+	var pm projectMemberAuthRow
+	err := db.Table("ms_project_member").Select("authorize").
+		Where("member_code=? AND is_owner=1 AND authorize != '' AND authorize != '0'", memberId).
+		Scan(&pm).Error
+	if err == nil && pm.Authorize != "" {
+		authId, _ := strconv.ParseInt(pm.Authorize, 10, 64)
+		if authId > 0 {
+			return authId
+		}
+	}
+	// 其次查找任意有 authorize 的记录
+	err = db.Table("ms_project_member").Select("authorize").
+		Where("member_code=? AND authorize != '' AND authorize != '0'", memberId).
+		Scan(&pm).Error
+	if err == nil && pm.Authorize != "" {
+		authId, _ := strconv.ParseInt(pm.Authorize, 10, 64)
+		if authId > 0 {
+			return authId
+		}
+	}
+	return 0
 }

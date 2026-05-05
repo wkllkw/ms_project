@@ -9,6 +9,10 @@ export default {
     SET_LOGOUT(state) {
         state.logged = false;
         state.userInfo = null;
+        state.permissionNodes = [];
+    },
+    SET_PERMISSION_NODES(state, nodes) {
+        state.permissionNodes = nodes;
     },
     setTheme(state, theme) {
         state.theme = theme

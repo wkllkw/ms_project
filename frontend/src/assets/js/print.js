@@ -114,7 +114,7 @@ Print.prototype = {
                 frameWindow.close();
             }, 10);
         } catch (err) {
-            console.log('err', err);
+            // 打印错误已静默处理
         }
     },
     isDOM: (typeof HTMLElement === 'object') ?

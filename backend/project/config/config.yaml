@@ -21,6 +21,8 @@ grpc:
 etcd:
   addrs:
     - "127.0.0.1:2379"
+rpc:
+  userAddr: "127.0.0.1:18881"
 mysql:
   username: root
   password: root

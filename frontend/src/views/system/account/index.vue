@@ -11,6 +11,10 @@
                     <span class="success-color" v-if="record.status">使用中</span>
                     <span v-else>已禁用</span>
                 </template>
+                <template slot="authorize" slot-scope="text,record,index">
+                    <a-tag v-if="getAuthTitle(record.authorize)" color="blue">{{ getAuthTitle(record.authorize) }}</a-tag>
+                    <span v-else style="color:rgba(0,0,0,0.25)">未分配</span>
+                </template>
                 <template slot="action" slot-scope="text,record,index">
                     <template v-if="!record.is_owner">
                         <a @click="rowClick(record,'edit')">编辑</a>
@@ -154,21 +158,29 @@
     const columns = [{
         title: '头像',
         dataIndex: 'avatar',
-        width: '30%',
+        width: '8%',
         scopedSlots: {
             customRender: 'avatar'
         }
     }, {
         title: '姓名',
         dataIndex: 'name',
-        width: '15%',
+        width: '12%',
     }, {
         title: '手机',
         dataIndex: 'mobile',
-        width: '15%',
+        width: '12%',
+    }, {
+        title: '权限角色',
+        dataIndex: 'authorize',
+        width: '12%',
+        scopedSlots: {
+            customRender: 'authorize'
+        }
     },{
         title: '状态',
         dataIndex: 'status',
+        width: '8%',
         scopedSlots: {
             customRender: 'status'
         }
@@ -211,6 +223,11 @@
             this.init();
         },
         methods: {
+            getAuthTitle(authorize) {
+                if (!authorize) return '';
+                const auth = this.authList.find(a => a.value === authorize);
+                return auth ? auth.label : '';
+            },
             init(){
                 let app = this;
                 app.loading = true;

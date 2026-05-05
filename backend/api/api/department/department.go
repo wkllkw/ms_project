@@ -36,17 +36,33 @@ func (h *HandlerDepartment) list(c *gin.Context) {
 	page.Bind(c)
 	orgCode := c.GetString("organizationCode")
 	orgId, _ := codecs.DecryptInt64(orgCode)
+	// 支持 pcode 参数，按父部门过滤（树形懒加载）
+	pcode := c.PostForm("pcode")
+	var parentId int64
+	if pcode != "" {
+		parentId, _ = codecs.DecryptInt64(pcode)
+	}
 	db := gorms.GetDB()
 	query := db.Model(&departmentRow{}).Where("deleted=0")
 	if orgId != 0 {
 		query = query.Where("organization_code=?", orgId)
 	}
+	// 如果指定了父部门，则只查询该父部门下的子部门
+	if pcode != "" {
+		query = query.Where("parent_id=?", parentId)
+	} else {
+		// 未指定父部门时，只返回顶级部门（parent_id=0）
+		query = query.Where("parent_id=0")
+	}
 	var total int64
 	_ = query.Count(&total).Error
 	var rows []departmentRow
 	_ = query.Order("sort asc, id asc").Limit(int(page.PageSize)).Offset(int((page.Page - 1) * page.PageSize)).Find(&rows).Error
+	// 查询每个部门是否有子部门，用于前端树形展示
 	out := make([]gin.H, 0, len(rows))
 	for _, d := range rows {
+		var childCount int64
+		_ = db.Model(&departmentRow{}).Where("deleted=0 and parent_id=?", d.Id).Count(&childCount).Error
 		out = append(out, gin.H{
 			"id":               d.Id,
 			"code":             codecs.EncryptInt64(d.Id),
@@ -55,6 +71,7 @@ func (h *HandlerDepartment) list(c *gin.Context) {
 			"organization_code": codecs.EncryptInt64(d.OrganizationCode),
 			"sort":             d.Sort,
 			"create_time":      d.CreateTime,
+			"hasNext":          childCount > 0,
 		})
 	}
 	c.JSON(http.StatusOK, result.Success(gin.H{"list": out, "total": total}))

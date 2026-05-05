@@ -358,7 +358,6 @@
                         params.joiner = JSON.stringify(params.joiner);
                         params.status = JSON.stringify(params.status);
                         params.tag = JSON.stringify(params.tag);
-                        console.log(params);
                         if (params.end_time && params.end_time.length) {
                             params.endTime = JSON.stringify([moment(params.end_time[0]).format('YYYY-MM-DD'), moment(params.end_time[1]).format('YYYY-MM-DD')]);
                         } else {
@@ -379,7 +378,6 @@
                         } else {
                             params.doneTime = undefined;
                         }
-                        console.log(params);
                         this.$emit('search', params)
                     }
                 })

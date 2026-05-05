@@ -1,5 +1,5 @@
 import {setStore, removeStore} from '@/assets/js/storage'
-import {_checkLogin, _currentMember} from "../api/user";
+import {_checkLogin, _currentMember, _getUserNodes} from "../api/user";
 
 export default {
     SET_LOGGED({commit}, data) {
@@ -14,6 +14,7 @@ export default {
     SET_LOGOUT({commit}) {
         removeStore('tokenList');
         removeStore('userInfo');
+        removeStore('permissionNodes');
         commit('SET_LOGOUT');
     },
     getUser({commit}) {
@@ -43,6 +44,17 @@ export default {
                 removeStore('userInfo');
                 commit('SET_LOGOUT');
             }
+        });
+    },
+    FETCH_PERMISSION_NODES({commit, state}) {
+        if (!state.logged) return Promise.resolve([]);
+        return _getUserNodes().then(res => {
+            const nodes = res.data && res.data.nodes ? res.data.nodes : [];
+            setStore('permissionNodes', nodes);
+            commit('SET_PERMISSION_NODES', nodes);
+            return nodes;
+        }).catch(() => {
+            return [];
         });
     },
     setTheme({commit}, theme) {

@@ -38,6 +38,10 @@ func typeToInt(t string) int8 {
 		return 1
 	case "message":
 		return 0
+	case "system":
+		return 2
+	case "all":
+		return -1 // 特殊标记，不按 type 筛选
 	default:
 		return 1
 	}
@@ -59,7 +63,17 @@ func (h *HandlerNotify) list(c *gin.Context) {
 	db := gorms.GetDB()
 	query := db.Model(&notifyRow{}).Where("member_code=?", memberId)
 	if t != "" {
-		query = query.Where("type=?", typeToInt(t))
+		typeVal := typeToInt(t)
+		if typeVal >= 0 {
+			query = query.Where("type=?", typeVal)
+		}
+		// typeVal == -1 (all) 时不按 type 筛选
+	}
+	// 支持按 action 字段筛选（前端任务通知/系统公告 Tab）
+	if action := c.PostForm("action"); action != "" {
+		if action == "task" {
+			query = query.Where("(action LIKE ? OR type = ?)", "task:%", 1)
+		}
 	}
 	if title := c.PostForm("title"); title != "" {
 		query = query.Where("title like ?", "%"+title+"%")
@@ -91,11 +105,11 @@ func (h *HandlerNotify) noReads(c *gin.Context) {
 	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB()
 	var notices []notifyRow
-	_ = db.Where("member_code=? and type=? and is_read=0", memberId, 1).Order("id desc").Limit(10).Find(&notices).Error
+	_ = db.Where("member_code=? and type in ? and is_read=0", memberId, []int8{1, 2}).Order("id desc").Limit(10).Find(&notices).Error
 	var messages []notifyRow
 	_ = db.Where("member_code=? and type=? and is_read=0", memberId, 0).Order("id desc").Limit(10).Find(&messages).Error
 	var noticeTotal int64
-	_ = db.Model(&notifyRow{}).Where("member_code=? and type=? and is_read=0", memberId, 1).Count(&noticeTotal).Error
+	_ = db.Model(&notifyRow{}).Where("member_code=? and type in ? and is_read=0", memberId, []int8{1, 2}).Count(&noticeTotal).Error
 	var messageTotal int64
 	_ = db.Model(&notifyRow{}).Where("member_code=? and type=? and is_read=0", memberId, 0).Count(&messageTotal).Error
 	// 格式化输出

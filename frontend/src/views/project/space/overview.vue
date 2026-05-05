@@ -29,13 +29,15 @@
             </div>
             <section class="nav-body">
                 <ul class="nav-wrapper nav nav-underscore pull-left">
+                    <li><a class="app" data-app="home"
+                           @click="$router.push('/project/space/index/' + code)">概览</a></li>
                     <li><a class="app" data-app="tasks"
                            @click="$router.push('/project/space/task/' + code)">任务</a></li>
                     <li class=""><a class="app" data-app="works"
                                     @click="$router.push('/project/space/files/' + code)">
                         文件</a>
                     <li class="actives"><a class="app" data-app="build">
-                        概览</a>
+                        报表</a>
                     </li>
                     <li class=""><a class="app" data-app="build"
                                     @click="$router.push('/project/space/features/' + code)">
@@ -635,7 +637,6 @@
                     Object.assign(obj, app.infoModal.newData);
                 }
                 obj.projectCode = app.code;
-                console.log(obj);
                 doInfo(obj).then(res => {
                     app.infoModal.loading = false;
                     if (!checkResponse(res)) {
@@ -657,7 +658,6 @@
                 })
             },
             ondateChange(e) {
-                console.log(e);
                 const project = this.project;
                 doData({
                     projectCode: project.code,

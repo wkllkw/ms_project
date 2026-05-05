@@ -22,7 +22,11 @@ func InitRpcUserClient() {
 		resolver.Register(etcdRegister)
 	}
 
-	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(
+		target,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
+	)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

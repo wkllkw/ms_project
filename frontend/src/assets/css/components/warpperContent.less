@@ -1,19 +1,19 @@
 .page-title {
-  font-size: 18px;
-  color: #1a1a2e;
-  line-height: 35px;
-  padding-bottom: 5px;
+  font-size: 17px;
+  color: rgba(0, 0, 0, 0.85);
+  line-height: 32px;
+  padding-bottom: 4px;
   font-weight: 600;
 }
 .content-title {
-  font-size: 18px;
-  color: #464c5b;
-  line-height: 35px;
+  font-size: 17px;
+  color: rgba(0, 0, 0, 0.75);
+  line-height: 32px;
   padding-bottom: 12px;
-  margin-bottom: 12px;
-  min-height: 52px;
+  margin-bottom: 16px;
+  min-height: 48px;
   font-weight: 400;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .content-action {
@@ -21,13 +21,11 @@
 }
 
 .content-action + .page-title {
-  //padding-top: 55px;
 }
 .page-header{
-  //margin-top: 65px;
   background: #fff;
-  padding: 16px 32px 0;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 16px 28px 0;
+  border-bottom: 1px solid #f0f0f0;
   .breadcrumb{
     margin-bottom: 16px;
   }
@@ -42,8 +40,8 @@
       flex: 0 1 auto;
       .title{
         flex: auto;
-        font-size: 20px;
-        font-weight: 500;
+        font-size: 18px;
+        font-weight: 600;
         color: rgba(0,0,0,.85);
         margin-bottom: 16px;
       }
@@ -85,8 +83,8 @@
 
 .wrapper-content {
   width: 100%;
-  padding-right: 24px;
-  transition: all 368ms;
+  padding-right: 28px;
+  transition: opacity 0.2s;
   .action{
     padding-bottom: 12px;
     line-height: 3;
@@ -101,28 +99,36 @@
 }
 
 .has-header-content .wrapper-content {
-  padding: 80px 20px 0 276px;
+  padding: 72px 24px 0 260px;
   margin-top: 0;
   height: 100%;
 }
 
 .has-header-content .layout-content {
-  box-shadow: 0 2px 3px 0 rgba(0, 0, 0, .047);
-  padding: 5px 30px 15px 30px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.25s ease;
+
+  &:hover {
+    border-color: rgba(58, 130, 248, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
 }
 
 .wrapper-content .data-content {
-  margin-top: 30px;
+  margin-top: 24px;
 }
 
 .layout-content .content-header {
-  height: 56px;
+  height: 52px;
   z-index: 5;
   width: 100%;
-  line-height: 56px;
+  line-height: 52px;
   overflow: hidden;
-  border-bottom: 1px solid #e5e5e5;
-  margin-bottom: 35px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 24px;
 }
 
 .layout-content .content-header h1:first-child {
@@ -133,13 +139,12 @@
 .layout-content .content-header h1 {
   font-size: 14px;
   float: left;
-  line-height: 56px;
+  line-height: 52px;
   font-weight: 400;
 }
 
 .layout-copy {
   text-align: center;
   padding: 10px 0 20px;
-  color: #9ea7b4;
+  color: rgba(0, 0, 0, 0.25);
 }
-

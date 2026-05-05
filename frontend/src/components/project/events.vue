@@ -277,7 +277,6 @@ export default {
                 if (valid) {
                     app.handleOk();
                 } else {
-                    console.log('error submit!!');
                     return false;
                 }
             });
@@ -286,7 +285,6 @@ export default {
             let app = this;
             app.submitting = true;
             let obj = {...app.formData};
-            console.log('保存日程数据:', obj);
             // 确保成员列表不为空
             if (!obj.member_list || obj.member_list.length === 0) {
                 obj.member_list = [app.currentMemberCode];
@@ -304,12 +302,10 @@ export default {
                 if (!checkResponse(res, true)) {
                     return;
                 }
-                console.log('日程保存成功:', res);
                 app.$emit('confirm', obj)
                 this.show = false;
-            }).catch(err => {
+            }).catch(() => {
                 app.submitting = false;
-                console.error('日程保存失败:', err);
             });
         },
         async rowClick(record, action, index = null) {
@@ -361,7 +357,6 @@ export default {
             }
         },
         canRemove(memberCode) {
-            console.log(this.formData.memberList);
             if (this.formData.memberList) {
                 const member = this.formData.memberList.find(item => item.member_code == memberCode);
                 if (member && member.is_owner) {

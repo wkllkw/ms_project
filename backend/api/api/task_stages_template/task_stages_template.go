@@ -40,8 +40,18 @@ func (h *HandlerTaskStagesTemplate) list(c *gin.Context) {
 	db := gorms.GetDB()
 	query := db.Model(&row{})
 	if templateCode != "" {
+		// 先尝试解密为加密ID
 		tid, err := codecs.DecryptInt64(templateCode)
-		if err == nil {
+		if err != nil || tid == 0 {
+			// 如果解密失败，尝试通过 code 字符串查找模板ID
+			var tpl struct {
+				Id int64 `gorm:"column:id"`
+			}
+			if err2 := gorms.GetDB().Table("ms_project_template").Select("id").Where("code = ?", templateCode).Scan(&tpl).Error; err2 == nil && tpl.Id > 0 {
+				tid = tpl.Id
+			}
+		}
+		if tid > 0 {
 			query = query.Where("project_template_code=?", tid)
 		}
 	}
@@ -70,8 +80,23 @@ func (h *HandlerTaskStagesTemplate) save(c *gin.Context) {
 	if templateCode == "" {
 		templateCode = c.PostForm("projectTemplateCode")
 	}
+	if templateCode == "" {
+		templateCode = c.PostForm("templateCode")
+	}
+
+	// 先尝试解密为加密ID
 	tid, err := codecs.DecryptInt64(templateCode)
-	if err != nil {
+	if err != nil || tid == 0 {
+		// 如果解密失败，尝试通过 code 字符串查找模板ID
+		var tpl struct {
+			Id int64 `gorm:"column:id"`
+		}
+		if err2 := gorms.GetDB().Table("ms_project_template").Select("id").Where("code = ?", templateCode).Scan(&tpl).Error; err2 == nil && tpl.Id > 0 {
+			tid = tpl.Id
+		}
+	}
+
+	if tid == 0 {
 		c.JSON(http.StatusOK, result.Fail(400, "projectTemplateCode无效"))
 		return
 	}

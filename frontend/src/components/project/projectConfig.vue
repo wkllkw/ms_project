@@ -348,6 +348,9 @@
                     <div class="infos">
                         <p class="item-title">项目操作</p>
                         <div class="item-tips muted">您可以执行以下操作</div>
+                        <a-button size="large" class="middle-btn" icon="save" @click="showSaveTemplate">
+                            另存为模板
+                        </a-button>
                         <a-button size="large" class="middle-btn" @click="archiveProject">
                             <span v-if="project.archive">取消归档</span>
                             <span v-if="!project.archive">归档项目</span>
@@ -361,11 +364,32 @@
                 </div>
             </div>
         </a-tab-pane>
+        <!-- 保存为模板弹窗 -->
+        <a-modal
+                destroyOnClose
+                :width="400"
+                v-model="templateModal.visible"
+                title="将当前项目保存为模板"
+                :confirmLoading="templateModal.loading"
+                @ok="handleSaveAsTemplate"
+        >
+            <a-form :form="templateForm" @submit.prevent="handleSaveAsTemplate">
+                <a-form-item label="模板名称">
+                    <a-input placeholder="请输入模板名称"
+                             v-decorator="['templateName', {rules: [{required: true, message: '请输入模板名称'}]}]"/>
+                </a-form-item>
+                <a-form-item label="模板说明">
+                    <a-textarea placeholder="请输入模板说明（选填）" :rows="3"
+                                v-decorator="['templateDescription']"/>
+                </a-form-item>
+            </a-form>
+            <a-alert message="将基于此项目的任务列表结构创建模板，方便后续快速创建同类项目。" type="info" showIcon style="margin-top:8px;"/>
+        </a-modal>
     </a-tabs>
 </template>
 
 <script>
-    import {read as getProject, doData, archive, recycle, recoveryArchive, recovery, quit} from "../../api/project";
+    import {read as getProject, doData, archive, recycle, recoveryArchive, recovery, quit, saveAsTemplate} from "../../api/project";
     import {
         _getTaskWorkflowRules,
         list as getTaskWorkflowList,
@@ -443,6 +467,11 @@
                 taskStages: [],
                 uploadLoading: false,
                 uploadAction: getApiUrl('project/project/uploadCover'),
+                templateForm: this.$form.createForm(this, {name: 'templateForm'}),
+                templateModal: {
+                    visible: false,
+                    loading: false,
+                },
             }
         },
         computed: {
@@ -598,11 +627,52 @@
                                 return;
                             }
                             app.$emit('complete');
-                            app.$router.replace('/project/list/my');
+                            app.$router.replace('/project/list/my').catch(() => {});
 
                         });
                         return Promise.resolve();
                     }
+                });
+            },
+            showSaveTemplate() {
+                let app = this;
+                app.templateModal.visible = true;
+                app.$nextTick(() => {
+                    app.templateForm && app.templateForm.resetFields();
+                    app.$nextTick(() => {
+                        app.templateForm.setFieldsValue({
+                            templateName: (app.project.name || '') + ' - 模板',
+                            templateDescription: app.project.description || '',
+                        });
+                    });
+                });
+            },
+            handleSaveAsTemplate() {
+                let app = this;
+                app.templateForm.validateFields((err) => {
+                    if (err) return;
+                    app.templateModal.loading = true;
+                    let formData = app.templateForm.getFieldsValue();
+                    saveAsTemplate({
+                        projectCode: app.code,
+                        name: formData.templateName,
+                        description: formData.templateDescription,
+                    }).then(res => {
+                        app.templateModal.loading = false;
+                        if (!checkResponse(res)) {
+                            return;
+                        }
+                        app.templateModal.visible = false;
+                        app.templateForm.resetFields();
+                        const stagesCount = (res.data && res.data.stages_count) || 0;
+                        if (stagesCount > 0) {
+                            app.$message.success(`模板「${formData.templateName}」创建成功，已包含 ${stagesCount} 个任务列表`);
+                            return;
+                        }
+                        app.$message.success('模板创建成功（项目暂无任务列表）');
+                    }).catch(() => {
+                        app.templateModal.loading = false;
+                    });
                 });
             },
             doTaskWorkflow(taskWorkflow = null) {
@@ -747,8 +817,6 @@
                 });
             },
             workflowRuleChange(value, name) {
-                console.log(value);
-                console.log(name);
                 if (name == 'firstAction.action') {
                     this.currentTaskWorkflowRule.firstAction.value = '';
                 }

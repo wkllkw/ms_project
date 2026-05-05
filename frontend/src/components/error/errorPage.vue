@@ -32,7 +32,6 @@
 </template>
 <script>
     import {getStore} from "../../assets/js/storage";
-    const currentOrganization = getStore('currentOrganization', true);
 
     export default {
         props: {
@@ -45,14 +44,39 @@
             subDesc: {
                 default: '请稍后重试或联系管理员',
             },
-            url: {
-                default: currentOrganization ? '/home/' + currentOrganization.code : '/home'
-            },
             urlText: {
                 default: '返回首页'
             }
         },
+        data() {
+            return {
+                url: this.getHomeUrl()
+            }
+        },
         methods: {
+            getHomeUrl() {
+                const currentOrganization = getStore('currentOrganization', true);
+                const homePath = currentOrganization ? '/home/' + currentOrganization.code : '/home';
+                // 检查用户是否有 home 权限，没有则找第一个有权限的路由
+                const permissionNodes = getStore('permissionNodes', true) || [];
+                if (Array.isArray(permissionNodes) && permissionNodes.length > 0 && !permissionNodes.includes('home')) {
+                    // 根据权限节点映射到可访问的路由
+                    const nodeRouteMap = {
+                        'project.list': '/project/list/my',
+                        'project.template': '/project/template',
+                        'project.analysis': '/project/analysis',
+                        'notify.notice': '/notify/notice',
+                        'calendar': '/calendar',
+                        'members.index': '/members',
+                    };
+                    for (const node of permissionNodes) {
+                        if (nodeRouteMap[node]) {
+                            return nodeRouteMap[node];
+                        }
+                    }
+                }
+                return homePath;
+            },
             goBack() {
                 this.$router.go(-1);
             }

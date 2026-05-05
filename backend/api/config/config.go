@@ -1,9 +1,11 @@
 package config
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/spf13/viper"
 	"log"
-	"os"
 	"test.com/project-common/logs"
 )
 
@@ -153,7 +155,26 @@ func (c *Config) ReadMailConfig() {
 		Password: c.viper.GetString("mail.password"),
 		From:     c.viper.GetString("mail.from"),
 	}
-	if mc.Host != "" {
+	// 支持环境变量覆盖邮件配置，便于Docker部署和不同环境切换
+	if v := os.Getenv("MAIL_HOST"); v != "" {
+		mc.Host = v
+	}
+	if v := os.Getenv("MAIL_PORT"); v != "" {
+		if port, err := strconv.Atoi(v); err == nil {
+			mc.Port = port
+		}
+	}
+	if v := os.Getenv("MAIL_USER"); v != "" {
+		mc.User = v
+	}
+	if v := os.Getenv("MAIL_PASSWORD"); v != "" {
+		mc.Password = v
+	}
+	if v := os.Getenv("MAIL_FROM"); v != "" {
+		mc.From = v
+	}
+	// 只有配置了有效的SMTP主机才启用邮件服务
+	if mc.Host != "" && mc.Password != "" && mc.Password != "placeholder_replace_with_real_auth_code" {
 		c.MailConfig = mc
 	}
 }

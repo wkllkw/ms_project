@@ -24,6 +24,8 @@
             </div>
             <section class="nav-body">
                 <ul class="nav-wrapper nav nav-underscore pull-left">
+                    <li><a class="app" data-app="home"
+                           @click="$router.push('/project/space/index/' + code)">概览</a></li>
                     <li><a class="app" data-app="tasks"
                            @click="$router.push('/project/space/task/' + code)">任务</a></li>
                     <li class=""><a class="app" data-app="works"
@@ -31,7 +33,7 @@
                         文件</a>
                     <li><a class="app" data-app="build"
                            @click="$router.push('/project/space/overview/' + code)">
-                        概览</a>
+                        报表</a>
                     </li>
                     <li class="actives"><a class="app" data-app="build">
                         版本</a>

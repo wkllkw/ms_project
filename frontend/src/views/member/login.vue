@@ -292,7 +292,7 @@
                 }
                 this.$router.replace({
                     path: redirect
-                });
+                }).catch(() => {});
                 this.$notification.success({
                     message: '欢迎',
                     description: `${res.data.member.name}，${timeFix()}，欢迎回来`,
@@ -349,7 +349,9 @@
                         }
                     }
                     await app.$store.dispatch('setCurrentOrganization', currentOrganization);
-                    await app.$store.dispatch('GET_MENU').then(() => {
+                    await app.$store.dispatch('GET_MENU').then(async () => {
+                        // 获取权限节点（菜单API可能已返回，这里作为兜底）
+                        await app.$store.dispatch('FETCH_PERMISSION_NODES');
                         app.loginSuccess(res, currentOrganization);
                     });
                 } else {

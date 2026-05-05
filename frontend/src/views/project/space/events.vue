@@ -24,6 +24,8 @@
             </div>
             <section class="nav-body">
                 <ul class="nav-wrapper nav nav-underscore pull-left">
+                    <li><a class="app" data-app="home"
+                           @click="$router.push('/project/space/index/' + code)">概览</a></li>
                     <li><a class="app" data-app="tasks"
                            @click="$router.push('/project/space/task/' + code)">任务</a></li>
                     <li><a class="app" data-app="works"
@@ -31,7 +33,7 @@
                         文件</a>
                     <li><a class="app" data-app="build"
                            @click="$router.push('/project/space/overview/' + code)">
-                        概览</a>
+                        报表</a>
                     </li>
                     <li class=""><a class="app" data-app="build"
                                     @click="$router.push('/project/space/features/' + code)">
@@ -390,7 +392,6 @@ export default {
                 if (valid) {
                     app.handleOk();
                 } else {
-                    console.log('error submit!!');
                     return false;
                 }
             });
@@ -399,7 +400,6 @@ export default {
             let app = this;
             app.submitting = true;
             let obj = {...app.formData};
-            console.log(obj);
             // app.$emit('fieldsSave', obj);
             obj.member_list = JSON.stringify(obj.member_list);
             obj.begin_time = moment(obj.begin_time).format('YYYY-MM-DD HH:mm:ss')
@@ -467,7 +467,6 @@ export default {
             }
         },
         canRemove(memberCode) {
-            console.log(this.formData.memberList);
             if (this.formData.memberList) {
                 const member = this.formData.memberList.find(item => item.member_code == memberCode);
                 if (member && member.is_owner) {

@@ -64,6 +64,7 @@ func defaultMenuDefs() []defaultMenuDef {
 		{PreferredID: 41, ParentNode: "system", Title: "账号管理", Icon: "user", Url: "system/account", FilePath: "system/account/index", Node: "system.account", Sort: 1, Status: 1, ShowSlider: 1},
 		{PreferredID: 42, ParentNode: "system", Title: "菜单管理", Icon: "menu", Url: "system/config/menu", FilePath: "system/config/menu", Node: "system.menu", Sort: 2, Status: 1, ShowSlider: 1},
 		{PreferredID: 43, ParentNode: "system", Title: "节点管理", Icon: "apartment", Url: "system/config/node", FilePath: "system/config/node", Node: "system.node", Sort: 3, Status: 1, ShowSlider: 1},
+		{PreferredID: 44, ParentNode: "system", Title: "权限管理", Icon: "safety", Url: "system/account/auth", FilePath: "system/account/auth", Node: "system.account.auth", Sort: 4, Status: 1, ShowSlider: 1},
 	}
 }
 

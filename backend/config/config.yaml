@@ -11,6 +11,13 @@ zap:
 etcd:
   addrs:
     - "127.0.0.1:2379"
+rpc:
+  userAddr: "127.0.0.1:18881"
+  projectAddr: "127.0.0.1:18882"
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
 mysql:
   username: root
   password: root

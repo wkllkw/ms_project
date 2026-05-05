@@ -63,6 +63,27 @@ frontend/.vscode
 database/*.sql.bak
 database/*.sql.gz
 
+# Docker data (MySQL, Redis, etc.)
+data/
+
+# Deploy directory
+deploy/
+
+# Go compiled binaries
+backend/**/api-server
+backend/**/api_bin
+backend/**/project-api
+backend/**/ms-project-api
+backend/**/ms_project_api
+backend/**/ms-project-service
+backend/**/project-server
+backend/**/ms-user-service
+backend/**/project_bin
+backend/**/user_bin
+
+# Uploads
+backend/uploads/
+
 # ===========================================
 # General
 # ===========================================

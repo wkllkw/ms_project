@@ -14,6 +14,26 @@ import (
 	common "test.com/project-common"
 )
 
+// orgCodeFromContext 从 gin 上下文中获取解密后的 organizationCode
+func orgCodeFromContext(c *gin.Context) int64 {
+	orgVal, _ := c.Get("organizationCode")
+	switch t := orgVal.(type) {
+	case int64:
+		return t
+	case int:
+		return int64(t)
+	case string:
+		decrypted, err := codecs.DecryptInt64(t)
+		if err == nil && decrypted > 0 {
+			return decrypted
+		}
+		i, _ := strconv.ParseInt(t, 10, 64)
+		return i
+	default:
+		return 0
+	}
+}
+
 type HandlerEvents struct {
 }
 
@@ -80,9 +100,14 @@ func (h *HandlerEvents) myList(c *gin.Context) {
 	page := &model.Page{}
 	page.Bind(c)
 	memberId := c.GetInt64("memberId")
+	orgCode := orgCodeFromContext(c)
 	deleted := c.PostForm("deleted")
 	db := gorms.GetDB()
 	query := db.Model(&eventsRow{}).Joins("join ms_project_events_member m on m.events_id=ms_project_events.id").Where("m.member_id=?", memberId)
+	// 组织过滤：只显示当前组织下的日程
+	if orgCode != 0 {
+		query = query.Where("ms_project_events.project_code IN (SELECT id FROM ms_project WHERE organization_code=? AND deleted=0)", orgCode)
+	}
 	if deleted == "1" {
 		query = query.Where("ms_project_events.deleted=1")
 	} else {
@@ -292,6 +317,7 @@ func (h *HandlerEvents) getEventsListByCalendar(c *gin.Context) {
 	dateStr := c.PostForm("date")
 	memberCodesRaw := c.PostForm("memberCodes")
 	memberId := c.GetInt64("memberId") // 当前登录用户ID
+	orgCode := orgCodeFromContext(c)
 
 	// 解析日期，获取月份的第一天和最后一天
 	parsedDate, err := time.Parse("2006-01-02 15:04:05", dateStr)
@@ -337,6 +363,11 @@ func (h *HandlerEvents) getEventsListByCalendar(c *gin.Context) {
 			Where("mem.member_id = ?", memberId)
 	}
 
+	// 组织过滤：只显示当前组织下的日程
+	if orgCode != 0 {
+		query = query.Where("ms_project_events.project_code IN (SELECT id FROM ms_project WHERE organization_code=? AND deleted=0)", orgCode)
+	}
+
 	var rows []eventsRow
 	if err := query.Order("begin_time asc").Find(&rows).Error; err != nil {
 		c.JSON(http.StatusOK, result.Success(gin.H{"list": gin.H{}}))
@@ -346,10 +377,13 @@ func (h *HandlerEvents) getEventsListByCalendar(c *gin.Context) {
 	// 按日期分组
 	grouped := make(map[string][]gin.H)
 	for _, ev := range rows {
-		// 解析开始时间，获取日期部分
+		// 解析开始时间，获取日期部分（兼容有/无秒的格式）
 		beginTime, err := time.Parse("2006-01-02 15:04:05", ev.BeginTime)
 		if err != nil {
-			continue
+			beginTime, err = time.Parse("2006-01-02 15:04", ev.BeginTime)
+			if err != nil {
+				continue
+			}
 		}
 		dateKey := beginTime.Format("2006-01-02")
 		if _, ok := grouped[dateKey]; !ok {

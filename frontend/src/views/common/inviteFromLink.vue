@@ -70,7 +70,7 @@
                         this.$store.dispatch('setOrganizationList', res.data.organizationList || []);
                         this.$store.dispatch('setCurrentOrganization', res.data.currentOrganization || null);
                         setTimeout(function () {
-                            app.$router.replace({name: 'task', params: {code: app.inviteLink.source_code}})
+                            app.$router.replace({name: 'task', params: {code: app.inviteLink.source_code}}).catch(() => {});
                         }, 500);
                     });
                 } else if (this.inviteLink.invite_type == 'organization') {
@@ -80,7 +80,7 @@
                             this.$store.dispatch('setCurrentOrganization', res.data.currentOrganization || null);
                             this.$notice({title: '你已成功加入组织', msg: '你可以在右上方切换当前组织'}, 'notice', 'success');
                             setTimeout(function () {
-                                app.$router.replace('/')
+                                app.$router.replace('/').catch(() => {});
                             }, 500);
                         }
                     });

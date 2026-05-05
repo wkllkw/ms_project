@@ -28,9 +28,14 @@ redis:
   db: 0
 
 # 邮件通知配置（可选）
+# 支持 QQ邮箱(smtp.qq.com)、163邮箱(smtp.163.com)、阿里企业邮箱等
+# 示例 QQ邮箱：host: "smtp.qq.com", user: "your_qq@qq.com", password: "授权码"
+# 示例 163邮箱：host: "smtp.163.com", user: "your_name@163.com", password: "授权码"
+# 也可通过环境变量覆盖：MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASSWORD, MAIL_FROM
+# 配置有效的SMTP信息后，任务到期提醒、分配通知、评论通知等邮件功能将自动启用
 mail:
-  host: "smtp.example.com"
+  host: "smtp.qq.com"
   port: 465
-  user: "noreply@example.com"
-  password: "your_smtp_password"
+  user: "msproject_notify@qq.com"
+  password: "placeholder_replace_with_real_auth_code"
   from: "MS Project 协作平台"

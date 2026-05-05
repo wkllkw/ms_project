@@ -3,21 +3,19 @@ export default {
     data() {
         return {
             pagination: {
+                current: 1,
                 page: 1,
                 pageSize: 10,
                 total: 0,
-                showTotal: (total, range) => `共 ${total} 条`
+                showTotal: (total, range) => `共 ${total} 条`,
+                showSizeChanger: true,
             },
-            // requestData: {
-            //     page: this.pagination.page,
-            //     pageSize: this.pagination.pageSize,
-            // },
         }
     },
     computed:{
         requestData(){
             return {
-                page: this.pagination.page,
+                page: this.pagination.current || this.pagination.page,
                 pageSize: this.pagination.pageSize,
             };
         }
@@ -25,9 +23,10 @@ export default {
     methods: {
         init() {
         },
-        pageChange(page) {
-            this.pagination.page = page;
-            this.requestData.page = page.current;
+        pageChange(pagination) {
+            this.pagination.current = pagination.current;
+            this.pagination.page = pagination.current;
+            this.pagination.pageSize = pagination.pageSize;
             this.init();
         },
     }

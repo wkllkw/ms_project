@@ -3,6 +3,7 @@ package task_member
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -92,7 +93,7 @@ func (h *HandlerTaskMember) list(c *gin.Context) {
 		return
 	}
 
-	orgCode := c.GetInt64("organizationCode")
+	orgCode := orgCodeFromContext(c)
 	list := make([]gin.H, 0, len(members))
 
 	for _, m := range members {
@@ -104,8 +105,10 @@ func (h *HandlerTaskMember) list(c *gin.Context) {
 		var memberAccount memberAccountRow
 		db.Where("member_code = ? AND organization_code = ?", m.MemberId, orgCode).First(&memberAccount)
 
+		memberCodeStr := codecs.EncryptInt64(member.Id)
 		list = append(list, gin.H{
-			"memberCode":       codecs.EncryptInt64(member.Id),
+			"code":             memberCodeStr,
+			"memberCode":       memberCodeStr,
 			"name":             member.Name,
 			"avatar":           member.Avatar,
 			"memberAccountCode": memberAccount.Code,
@@ -142,7 +145,7 @@ func (h *HandlerTaskMember) searchInviteMember(c *gin.Context) {
 	}
 
 	db := gorms.GetDB()
-	orgCode := c.GetInt64("organizationCode")
+	orgCode := orgCodeFromContext(c)
 
 	// 获取项目成员
 	var projectMembers []projectMemberRow
@@ -361,4 +364,24 @@ func (h *HandlerTaskMember) inviteMemberBatch(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result.Success(nil))
+}
+
+// orgCodeFromContext 从 gin 上下文中获取解密后的 organizationCode
+func orgCodeFromContext(c *gin.Context) int64 {
+	orgVal, _ := c.Get("organizationCode")
+	switch t := orgVal.(type) {
+	case int64:
+		return t
+	case int:
+		return int64(t)
+	case string:
+		decrypted, err := codecs.DecryptInt64(t)
+		if err == nil && decrypted > 0 {
+			return decrypted
+		}
+		i, _ := strconv.ParseInt(t, 10, 64)
+		return i
+	default:
+		return 0
+	}
 }

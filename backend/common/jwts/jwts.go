@@ -24,7 +24,7 @@ func CreateToken(val string, exp time.Duration, secret string, refreshExp time.D
 	rExp := time.Now().Add(refreshExp).Unix()
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"token": val,
-		"exp":   aExp,
+		"exp":   rExp,
 	})
 	rToken, _ := refreshToken.SignedString([]byte(refreshSecret))
 	return &JwtToken{

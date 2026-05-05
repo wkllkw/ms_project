@@ -74,6 +74,10 @@ export function recycleBatch(data) {
     return $http.post('project/task/recycleBatch', data);
 }
 
+export function batchDone(data) {
+    return $http.post('project/task/batchDone', data);
+}
+
 export function recovery(code) {
     return $http.post('project/task/recovery', {taskCode: code});
 }

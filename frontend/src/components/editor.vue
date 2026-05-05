@@ -123,38 +123,47 @@ export default {
         },
         // 获取内容(html)
         getHtml() {
+            if (!this.editor) return ''
             return this.editor.txt.html()
         },
         // 获取内容(纯文本)
         getText() {
+            if (!this.editor) return ''
             return this.editor.txt.text()
         },
         // 设置内容(html)
         setHtml(text) {
+            if (!this.editor) return
             this.editor.txt.html(text)
         },
         // 追加内容(html)
         appendHtml(text) {
+            if (!this.editor) return
             this.editor.txt.append(text)
         },
         // 清空内容
         clear() {
+            if (!this.editor) return
             this.editor.clear()
         },
         // 启用编辑器
         enable() {
+            if (!this.editor) return
             this.editor.enable()
         },
         // 禁用编辑器
         disable() {
+            if (!this.editor) return
             this.editor.disable()
         },
         // 销毁编辑器
         destroy() {
+            if (!this.editor) return
             this.editor.destroy()
         },
         // 恢复编辑器
         undestroy() {
+            if (!this.editor) return
             this.editor.undestroy()
         },
         // 监听内容改变

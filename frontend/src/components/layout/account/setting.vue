@@ -45,7 +45,7 @@
                     case "security":
                         url = '/account/setting/security';
                 }
-                this.$router.push(url);
+                this.$router.push(url).catch(() => {});
             },
         }
     }

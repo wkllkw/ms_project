@@ -3,11 +3,13 @@ package organization
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"test.com/project-api/api/rpc"
 	"test.com/project-api/internal/database/gorms"
+	"test.com/project-api/pkg/codecs"
 	common "test.com/project-common"
 	"test.com/project-grpc/user/login"
 )
@@ -35,26 +37,6 @@ type organizationRow struct {
 
 func (*organizationRow) TableName() string {
 	return "ms_organization"
-}
-
-// memberAccountRow 成员账户表结构
-type memberAccountRow struct {
-	Id               int64  `gorm:"primaryKey;autoIncrement"`
-	Position         string `gorm:"column:position"`
-	Department       string `gorm:"column:department"`
-	Code             string `gorm:"column:code"`
-	MemberCode       int64  `gorm:"column:member_code"`
-	OrganizationCode int64  `gorm:"column:organization_code"`
-	IsOwner          int    `gorm:"column:is_owner"`
-	Status           int    `gorm:"column:status"`
-	CreateTime       int64  `gorm:"column:create_time"`
-	Avatar           string `gorm:"column:avatar"`
-	Name             string `gorm:"column:name"`
-	Email            string `gorm:"column:email"`
-}
-
-func (*memberAccountRow) TableName() string {
-	return "ms_member_account"
 }
 
 func (h *HandlerOrganization) loadOrganizations(memberId int64) ([]gin.H, error) {
@@ -90,6 +72,23 @@ func (h *HandlerOrganization) loadOrganizations(memberId int64) ([]gin.H, error)
 	return orgList, nil
 }
 
+// isOrgMember 检查用户是否是组织成员（创建者或通过部门加入）
+func isOrgMember(db *gorms.GormConn, memberId int64, organizationCode int64) bool {
+	// 检查是否是组织创建者
+	var org organizationRow
+	if err := db.Session(context.Background()).Where("id=? AND member_id=?", organizationCode, memberId).First(&org).Error; err == nil {
+		return true
+	}
+	// 检查是否通过部门加入
+	var count int64
+	db.Session(context.Background()).
+		Table("ms_department_member").
+		Joins("JOIN ms_department ON ms_department.id = ms_department_member.department_id").
+		Where("ms_department_member.member_id=? AND ms_department.organization_code=? AND ms_department.deleted=0", memberId, organizationCode).
+		Count(&count)
+	return count > 0
+}
+
 // createOrganization 创建组织
 func (h *HandlerOrganization) createOrganization(c *gin.Context) {
 	result := &common.Result{}
@@ -118,22 +117,6 @@ func (h *HandlerOrganization) createOrganization(c *gin.Context) {
 
 	if err := db.Table("ms_organization").Create(org).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "创建组织失败"))
-		return
-	}
-
-	// 创建成员账户记录
-	memberAccount := &memberAccountRow{
-		MemberCode:       memberId,
-		OrganizationCode: org.Id,
-		IsOwner:          1,
-		Status:           1,
-		CreateTime:       time.Now().UnixMilli(),
-		Position:         "资深工程师",
-		Department:       "某某公司－某某某事业群－某某平台部－某某技术部－BM",
-	}
-
-	if err := db.Table("ms_member_account").Create(memberAccount).Error; err != nil {
-		c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "创建成员账户失败"))
 		return
 	}
 
@@ -188,11 +171,16 @@ func (h *HandlerOrganization) editOrganization(c *gin.Context) {
 
 	db := gorms.GetDB().WithContext(c.Request.Context())
 
-	// 验证用户是否有权限编辑该组织
-	var memberAccount memberAccountRow
-	if err := db.Table("ms_member_account").
-		Where("member_code = ? AND organization_code = ?", memberId, organizationCode).
-		First(&memberAccount).Error; err != nil {
+	// 解析 organizationCode
+	orgCodeInt := decryptOrgCode(organizationCode)
+
+	// 验证用户是否有权限编辑该组织（创建者或组织成员）
+	var org organizationRow
+	if err := db.Table("ms_organization").Where("id = ?", orgCodeInt).First(&org).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(http.StatusBadRequest, "组织不存在"))
+		return
+	}
+	if org.MemberId != memberId && !isOrgMember(nil, memberId, orgCodeInt) {
 		c.JSON(http.StatusOK, result.Fail(http.StatusForbidden, "无权限编辑该组织"))
 		return
 	}
@@ -211,7 +199,7 @@ func (h *HandlerOrganization) editOrganization(c *gin.Context) {
 
 	if len(updates) > 0 {
 		if err := db.Table("ms_organization").
-			Where("id = ?", organizationCode).
+			Where("id = ?", orgCodeInt).
 			Updates(updates).Error; err != nil {
 			c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "更新失败"))
 			return
@@ -234,10 +222,12 @@ func (h *HandlerOrganization) deleteOrganization(c *gin.Context) {
 
 	db := gorms.GetDB().WithContext(c.Request.Context())
 
+	orgCodeInt := decryptOrgCode(organizationCode)
+
 	// 验证用户是否是组织所有者
 	var org organizationRow
 	if err := db.Table("ms_organization").
-		Where("id = ?", organizationCode).
+		Where("id = ?", orgCodeInt).
 		First(&org).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(http.StatusBadRequest, "组织不存在"))
 		return
@@ -250,7 +240,7 @@ func (h *HandlerOrganization) deleteOrganization(c *gin.Context) {
 
 	// 删除组织
 	if err := db.Table("ms_organization").
-		Where("id = ?", organizationCode).
+		Where("id = ?", orgCodeInt).
 		Delete(nil).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "删除失败"))
 		return
@@ -272,36 +262,31 @@ func (h *HandlerOrganization) quitOrganization(c *gin.Context) {
 
 	db := gorms.GetDB().WithContext(c.Request.Context())
 
-	// 检查是否已加入该组织
-	var memberAccount memberAccountRow
-	if err := db.Table("ms_member_account").
-		Where("member_code = ? AND organization_code = ?", memberId, organizationCode).
-		First(&memberAccount).Error; err != nil {
-		c.JSON(http.StatusOK, result.Fail(http.StatusBadRequest, "尚未加入该组织"))
+	orgCodeInt := decryptOrgCode(organizationCode)
+
+	// 检查是否属于该组织（创建者不能退出自己的组织）
+	var org organizationRow
+	if err := db.Table("ms_organization").Where("id = ?", orgCodeInt).First(&org).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(http.StatusBadRequest, "组织不存在"))
+		return
+	}
+	if org.MemberId == memberId {
+		c.JSON(http.StatusOK, result.Fail(http.StatusBadRequest, "创建者不能退出自己的组织"))
 		return
 	}
 
 	// 开启事务
 	tx := db.Begin()
 
-	// 删除成员账户记录
-	if err := tx.Table("ms_member_account").
-		Where("member_code = ? AND organization_code = ?", memberId, organizationCode).
-		Delete(nil).Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "退出失败"))
-		return
-	}
-
-	// 退出部门
-	if err := tx.Exec("DELETE FROM ms_department_member WHERE member_id = ?", memberId).Error; err != nil {
+	// 退出该组织下的部门
+	if err := tx.Exec("DELETE FROM ms_department_member WHERE member_id = ? AND department_id IN (SELECT id FROM ms_department WHERE organization_code = ?)", memberId, orgCodeInt).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "退出失败"))
 		return
 	}
 
 	// 退出项目成员
-	if err := tx.Exec("DELETE FROM ms_project_member WHERE member_code = ? AND project_code IN (SELECT id FROM ms_project WHERE organization_code = ?)", memberId, organizationCode).Error; err != nil {
+	if err := tx.Exec("DELETE FROM ms_project_member WHERE member_code = ? AND project_code IN (SELECT id FROM ms_project WHERE organization_code = ?)", memberId, orgCodeInt).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "退出失败"))
 		return
@@ -309,4 +294,23 @@ func (h *HandlerOrganization) quitOrganization(c *gin.Context) {
 
 	tx.Commit()
 	c.JSON(http.StatusOK, result.Success(""))
+}
+
+// decryptOrgCode 辅助函数：解密组织代码
+func decryptOrgCode(v interface{}) int64 {
+	switch t := v.(type) {
+	case int64:
+		return t
+	case int:
+		return int64(t)
+	case string:
+		decrypted, err := codecs.DecryptInt64(t)
+		if err == nil && decrypted > 0 {
+			return decrypted
+		}
+		i, _ := strconv.ParseInt(t, 10, 64)
+		return i
+	default:
+		return 0
+	}
 }

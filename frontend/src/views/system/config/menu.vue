@@ -230,14 +230,14 @@
         title: '类型',
         dataIndex: 'innerText',
     },
-    //     {
-    //     title: '状态',
-    //     dataIndex: 'statusText',
-    //     width: '15%',
-    //     scopedSlots: {
-    //         customRender: 'status'
-    //     },
-    // },
+    {
+        title: '状态',
+        dataIndex: 'statusText',
+        width: '10%',
+        scopedSlots: {
+            customRender: 'status'
+        },
+    },
         {
         title: '操作',
         dataIndex: 'id',
@@ -286,7 +286,8 @@
                 app.loading = true;
                 getMenu().then(res => {
                     app.loading = false;
-                    let list = res.data;
+                    let list = (res.data && res.data.menus) || [];
+                    if (!Array.isArray(list)) list = [];
                     list.forEach(function (v) {
                         v.key = v.id;
                         v.dept = 1;

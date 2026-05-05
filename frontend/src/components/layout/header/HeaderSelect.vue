@@ -42,7 +42,7 @@
                 if (app.currentOrganization && app.currentOrganization.code === selectedCode) return;
                 changeCurrentOrganization(app.organizationList[action.key]).then(res=>{
                     if (checkResponse(res)) {
-                        app.$router.replace('/home/' + selectedCode);
+                        app.$router.replace('/home/' + selectedCode).catch(() => {});
                     }
                 })
             },

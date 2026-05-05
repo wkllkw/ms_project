@@ -41,7 +41,7 @@
                 if (stageIndex) {
                     url = `?from=${stageIndex}`;
                 }
-                this.$router.push(`/project/space/task/${this.projectCode}${url}`);
+                this.$router.push(`/project/space/task/${this.projectCode}${url}`).catch(() => {});
             },
         }
     }
@@ -59,11 +59,11 @@
 
         &.ant-modal {
             padding-bottom: 0;
+            top: 30px;
         }
 
         .ant-modal-content {
-            /*width: 1200px;*/
-            /*overflow: hidden;*/
+            overflow: visible;
 
             .ant-modal-body {
                 padding: 0;

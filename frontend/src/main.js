@@ -49,12 +49,15 @@ Vue.config.errorHandler = function (err, vm, info) {
 };
 
 // 全局捕获未处理的 Promise rejection，静默路由导航中断错误
+// 使用 capture 阶段注册，确保在 webpack-dev-server overlay 之前执行
+// 调用 stopImmediatePropagation 阻止 overlay 捕获这些正常的导航中断错误
 window.addEventListener('unhandledrejection', function (event) {
     const err = event.reason;
     if (err && silentNavigationErrors.has(err.name)) {
         event.preventDefault();
+        event.stopImmediatePropagation();
     }
-});
+}, true);
 Vue.use(Antd);
 Vue.component('WrapperContent', WrapperContent);
 
@@ -84,6 +87,10 @@ Vue.prototype.$vuescrollConfig = {
         keepShow: false
     }
 };
+
+// 全局快捷键管理
+import ShortcutManager from '@/plugins/shortcuts';
+ShortcutManager.install(Vue);
 
 Vue.mixin(common);
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"test.com/project-api/internal/authz"
 	"test.com/project-api/internal/database/gorms"
 	"test.com/project-api/pkg/codecs"
 	"test.com/project-api/pkg/model"
@@ -60,9 +61,22 @@ func (h *HandlerFile) list(c *gin.Context) {
 		return
 	}
 
+	// 权限校验：只有项目成员才能查看文件
+	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	if !authz.IsProjectMember(db, memberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
+
 	var total int64
-	query := db.Model(&fileRow{}).Where("project_code=? AND deleted=0", pid)
+	deleted := c.PostForm("deleted")
+	query := db.Model(&fileRow{}).Where("project_code=?", pid)
+	if deleted == "1" {
+		query = query.Where("deleted=1")
+	} else {
+		query = query.Where("deleted=0")
+	}
 
 	// 搜索关键字
 	keyword := c.PostForm("keyword")
@@ -143,6 +157,13 @@ func (h *HandlerFile) read(c *gin.Context) {
 		return
 	}
 
+	// 权限校验：检查项目成员
+	memberId := c.GetInt64("memberId")
+	if !authz.IsProjectMember(db, memberId, file.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此文件"))
+		return
+	}
+
 	// 获取成员信息
 	var member memberInfo
 	db.Table("ms_member").Where("id=?", file.MemberCode).First(&member)
@@ -181,7 +202,18 @@ func (h *HandlerFile) edit(c *gin.Context) {
 		return
 	}
 
+	// 权限校验：检查项目成员
+	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	var fileCheck fileRow
+	if err := db.Where("id=?", fid).First(&fileCheck).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "文件不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, fileCheck.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此文件"))
+		return
+	}
 	updates := map[string]any{
 		"update_time": time.Now().UnixMilli(),
 	}
@@ -214,7 +246,12 @@ func (h *HandlerFile) edit(c *gin.Context) {
 // @Router /file/upload [post]
 func (h *HandlerFile) uploadFiles(c *gin.Context) {
 	result := &common.Result{}
+	// vue-uploader 的 query 选项将参数作为 URL 查询参数发送，
+	// 而 c.PostForm 只读 POST 表单体，因此需要同时检查查询参数
 	projectCode := c.PostForm("projectCode")
+	if projectCode == "" {
+		projectCode = c.Query("projectCode")
+	}
 	memberId := c.GetInt64("memberId")
 
 	if projectCode == "" {
@@ -225,6 +262,13 @@ func (h *HandlerFile) uploadFiles(c *gin.Context) {
 	pid, err := codecs.DecryptInt64(projectCode)
 	if err != nil || pid == 0 {
 		c.JSON(http.StatusOK, result.Fail(400, "projectCode无效"))
+		return
+	}
+
+	// 权限校验：只有项目成员才能上传文件
+	db := gorms.GetDB().WithContext(c.Request.Context())
+	if !authz.IsProjectMember(db, memberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
 		return
 	}
 
@@ -273,7 +317,6 @@ func (h *HandlerFile) uploadFiles(c *gin.Context) {
 	title := strings.TrimSuffix(header.Filename, ext)
 
 	// 保存到数据库
-	db := gorms.GetDB().WithContext(c.Request.Context())
 	now := time.Now().UnixMilli()
 	row := &fileRow{
 		ProjectCode: pid,
@@ -289,17 +332,22 @@ func (h *HandlerFile) uploadFiles(c *gin.Context) {
 	}
 
 	if err := db.Create(row).Error; err != nil {
-		c.JSON(http.StatusOK, result.Fail(500, "保存文件信息失败"))
+		c.JSON(http.StatusOK, result.Fail(500, "保存文件信息失败: "+err.Error()))
 		return
 	}
 
+	// 查询项目名称（用于前端 watcher 刷新判断）
+	var projectName string
+	db.Table("ms_project").Where("id=?", pid).Pluck("name", &projectName)
+
 	c.JSON(http.StatusOK, result.Success(gin.H{
-		"code":     codecs.EncryptInt64(row.Id),
-		"title":    row.Title,
-		"fullName": row.FileName,
-		"fileType": row.FileType,
-		"fileSize": row.FileSize,
-		"fileUrl":  row.FileUrl,
+		"code":        codecs.EncryptInt64(row.Id),
+		"title":       row.Title,
+		"fullName":    row.FileName,
+		"fileType":    row.FileType,
+		"fileSize":    row.FileSize,
+		"fileUrl":     row.FileUrl,
+		"projectName": projectName,
 	}))
 }
 
@@ -319,7 +367,19 @@ func (h *HandlerFile) recycle(c *gin.Context) {
 		return
 	}
 
+	// 权限校验：检查项目成员
+	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	var fileCheck fileRow
+	if err := db.Where("id=?", fid).First(&fileCheck).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "文件不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, fileCheck.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此文件"))
+		return
+	}
+
 	if err := db.Model(&fileRow{}).Where("id=?", fid).Updates(map[string]any{
 		"deleted":     1,
 		"update_time": time.Now().UnixMilli(),
@@ -347,7 +407,19 @@ func (h *HandlerFile) recovery(c *gin.Context) {
 		return
 	}
 
+	// 权限校验：检查项目成员
+	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	var fileCheck fileRow
+	if err := db.Where("id=?", fid).First(&fileCheck).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "文件不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, fileCheck.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此文件"))
+		return
+	}
+
 	if err := db.Model(&fileRow{}).Where("id=?", fid).Updates(map[string]any{
 		"deleted":     0,
 		"update_time": time.Now().UnixMilli(),
@@ -375,7 +447,18 @@ func (h *HandlerFile) del(c *gin.Context) {
 		return
 	}
 
+	// 权限校验：检查项目成员
+	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	var fileCheck fileRow
+	if err := db.Where("id=?", fid).First(&fileCheck).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "文件不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, fileCheck.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此文件"))
+		return
+	}
 
 	// 获取文件信息
 	var file fileRow

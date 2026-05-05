@@ -17,6 +17,7 @@ import (
 	"test.com/project-api/internal/database/gorms"
 	"test.com/project-api/pkg/codecs"
 	"test.com/project-api/pkg/model"
+	ws "test.com/project-api/api/websocket"
 	common "test.com/project-common"
 )
 
@@ -47,6 +48,7 @@ type taskRow struct {
 	Deleted      int8
 	Private      int8
 	Done         int8
+	DoneTime     int64 `gorm:"column:done_time;default:0"`
 	LikeCount    int `gorm:"column:like"`
 	Star         int
 }
@@ -82,8 +84,44 @@ type taskWorkTimeRow struct {
 
 func (*taskWorkTimeRow) TableName() string { return "ms_task_work_time" }
 
+func statusText(status int8) string {
+	switch status {
+	case 0:
+		return "未开始"
+	case 1:
+		return "已完成"
+	case 2:
+		return "进行中"
+	case 3:
+		return "挂起"
+	case 4:
+		return "测试中"
+	default:
+		return "未开始"
+	}
+}
+
+func taskExecuteInfo(status int8) gin.H {
+	colorMap := map[int8]string{
+		0: "muted",
+		1: "complete",
+		2: "primary",
+		3: "danger",
+		4: "warning",
+	}
+	color := "muted"
+	if c, ok := colorMap[status]; ok {
+		color = c
+	}
+	return gin.H{
+		"color": color,
+		"name":  statusText(status),
+	}
+}
+
 func taskToResponse(db *gorms.GormConn, c *gin.Context, t taskRow) gin.H {
 	var projectInfo any
+	var projectName string
 	if t.ProjectCode != 0 {
 		projectInfo = gin.H{
 			"code": codecs.EncryptInt64(t.ProjectCode),
@@ -99,7 +137,17 @@ func taskToResponse(db *gorms.GormConn, c *gin.Context, t taskRow) gin.H {
 				"code": codecs.EncryptInt64(pr.Id),
 				"name": pr.Name,
 			}
+			projectName = pr.Name
 		}
+	}
+	// Query stage name
+	var stageName string
+	if t.StageCode != 0 {
+		var st struct {
+			Name string
+		}
+		_ = db.Session(c.Request.Context()).Table("ms_task_stages").Select("name").Where("id=?", t.StageCode).First(&st).Error
+		stageName = st.Name
 	}
 	execId := t.AssignTo
 	if execId == 0 {
@@ -117,30 +165,109 @@ func taskToResponse(db *gorms.GormConn, c *gin.Context, t taskRow) gin.H {
 			}
 		}
 	}
+	// Query tags for this task (nested structure for frontend compatibility)
+	var tagRows []taskTagRow
+	_ = db.Session(c.Request.Context()).Table("ms_task_tag tg").
+		Joins("join ms_task_tag_rel r on r.tag_id=tg.id").
+		Where("r.task_id=? and tg.deleted=0", t.Id).
+		Select("tg.*").
+		Find(&tagRows).Error
+	tags := make([]gin.H, 0, len(tagRows))
+	for _, tg := range tagRows {
+		tags = append(tags, gin.H{
+			"code": codecs.EncryptInt64(tg.Id),
+			"tag": gin.H{
+				"color": tg.Color,
+				"name":  tg.Name,
+			},
+		})
+	}
+	// Priority text mapping
+	priText := ""
+	switch t.Priority {
+	case 0:
+		priText = "普通"
+	case 1:
+		priText = "紧急"
+	case 2:
+		priText = "非常紧急"
+	default:
+		priText = "普通"
+	}
+	// Count child tasks
+	var childDoneCount int64
+	var childTotalCount int64
+	if t.ParentTaskId == 0 {
+		_ = db.Session(c.Request.Context()).Model(&taskRow{}).Where("parent_task_id=? and deleted=0", t.Id).Count(&childTotalCount).Error
+		_ = db.Session(c.Request.Context()).Model(&taskRow{}).Where("parent_task_id=? and deleted=0 and done=1", t.Id).Count(&childDoneCount).Error
+	}
+	childCount := []int{int(childTotalCount), int(childDoneCount)}
+	// Check hasUnDone
+	hasUnDone := childTotalCount > 0 && childDoneCount < childTotalCount
+	// Check hasSource
+	var sourceCount int64
+	_ = db.Session(c.Request.Context()).Table("ms_source_link").Where("task_code=?", t.Id).Count(&sourceCount).Error
+	hasSource := sourceCount > 0
+	// Check hasComment
+	var commentCount int64
+	_ = db.Session(c.Request.Context()).Table("ms_task_comment").Where("task_id=?", t.Id).Count(&commentCount).Error
+	hasComment := commentCount > 0
+	// Sum work_time
+	var totalWorkTime int64
+	_ = db.Session(c.Request.Context()).Table("ms_task_work_time").Where("task_id=?", t.Id).Select("coalesce(sum(work_time),0)").Scan(&totalWorkTime).Error
+	// Parent task info
+	var parentTask any
+	var parentTasks []gin.H
+	if t.ParentTaskId != 0 {
+		var pt taskRow
+		_ = db.Session(c.Request.Context()).Where("id=?", t.ParentTaskId).First(&pt).Error
+		if pt.Id != 0 {
+			parentTask = gin.H{
+				"code": codecs.EncryptInt64(pt.Id),
+				"name": pt.Name,
+			}
+			parentTasks = append(parentTasks, parentTask.(gin.H))
+		}
+	}
 	return gin.H{
-		"id":           t.Id,
-		"id_num":       t.Id,
-		"code":         codecs.EncryptInt64(t.Id),
-		"name":         t.Name,
-		"description":  t.Description,
-		"done":         t.Done == 1,
-		"canRead":      true,
-		"status":       t.Status,
-		"statusText":   "",
-		"pri":          t.Priority,
-		"begin_time":   t.BeginTime,
-		"end_time":     t.EndTime,
-		"executor":     executor,
-		"childCount":   []int{0, 0},
-		"tags":         []any{},
-		"hasUnDone":    false,
-		"hasSource":    false,
-		"hasComment":   false,
-		"like":         t.LikeCount,
-		"star":         t.Star,
-		"project_code": codecs.EncryptInt64(t.ProjectCode),
-		"stage_code":   codecs.EncryptInt64(t.StageCode),
-		"projectInfo":  projectInfo,
+		"id":             t.Id,
+		"id_num":         t.Id,
+		"code":           codecs.EncryptInt64(t.Id),
+		"name":           t.Name,
+		"description":    t.Description,
+		"done":           t.Done == 1,
+		"canRead":        true,
+		"status":            t.Status,
+		"statusText":        statusText(t.Status),
+		"execute_state":     t.Status,
+		"task_execute_name": statusText(t.Status),
+		"task_execute":      taskExecuteInfo(t.Status),
+		"pri":            t.Priority,
+		"priText":        priText,
+		"begin_time":     t.BeginTime,
+		"end_time":       t.EndTime,
+		"executor":       executor,
+		"childCount":     childCount,
+		"tags":           tags,
+		"hasUnDone":      hasUnDone,
+		"hasSource":      hasSource,
+		"hasComment":     hasComment,
+		"like":           t.LikeCount,
+		"star":           t.Star,
+		"project_code":   codecs.EncryptInt64(t.ProjectCode),
+		"stage_code":     codecs.EncryptInt64(t.StageCode),
+		"projectInfo":    projectInfo,
+		"projectName":    projectName,
+		"stageName":      stageName,
+		"deleted":        t.Deleted,
+		"openBeginTime":  t.BeginTime > 0,
+		"liked":          false,
+		"stared":         t.Star > 0,
+		"work_time":      totalWorkTime,
+		"sort":           t.Sort,
+		"private":        t.Private,
+		"parentTask":     parentTask,
+		"parentTasks":    parentTasks,
 	}
 }
 
@@ -167,11 +294,37 @@ func (h *HandlerTask) list(c *gin.Context) {
 	db := gorms.New()
 	session := db.Session(c.Request.Context())
 	query := session.Model(&taskRow{})
+	orgCode := orgCodeFromContext(c)
 	if projectCode != "" {
 		pid, err := codecs.DecryptInt64(projectCode)
 		if err == nil {
+			// 数据隔离：检查当前用户是否是项目成员
+			memberId := c.GetInt64("memberId")
+			if !authz.IsProjectMember(session, memberId, pid) {
+				c.JSON(http.StatusOK, result.Success(gin.H{"list": []any{}, "total": 0}))
+				return
+			}
+			// 组织过滤：验证项目属于当前组织
+			if orgCode != 0 {
+				var projOrg int64
+				session.Table("ms_project").Where("id=?", pid).Select("organization_code").Scan(&projOrg)
+				if projOrg != orgCode {
+					c.JSON(http.StatusOK, result.Success(gin.H{"list": []any{}, "total": 0}))
+					return
+				}
+			}
 			query = query.Where("project_code=?", pid)
 		}
+	} else {
+		// 没有指定项目时，只返回用户参与的、当前组织下的项目中的任务
+		memberId := c.GetInt64("memberId")
+		subQuery := session.Table("ms_project_member pm").Select("pm.project_code").
+			Joins("join ms_project p on p.id=pm.project_code").
+			Where("pm.member_code=?", memberId)
+		if orgCode != 0 {
+			subQuery = subQuery.Where("p.organization_code=?", orgCode)
+		}
+		query = query.Where("project_code IN (?)", subQuery)
 	}
 	if deleted == "1" {
 		query = query.Where("deleted=1")
@@ -205,9 +358,15 @@ func (h *HandlerTask) selfList(c *gin.Context) {
 			memberId = id
 		}
 	}
+	orgCode := orgCodeFromContext(c)
 	db := gorms.New()
 	session := db.Session(c.Request.Context())
 	query := session.Model(&taskRow{}).Where("deleted=0").Where("assign_to=? or owner_code=? or member_code=?", memberId, memberId, memberId)
+	// 组织过滤：只显示当前组织下的任务
+	if orgCode != 0 {
+		subQuery := session.Table("ms_project").Select("id").Where("organization_code=? AND deleted=0", orgCode)
+		query = query.Where("project_code IN (?)", subQuery)
+	}
 	if typeStr := c.PostForm("type"); typeStr != "" {
 		if t, err := strconv.ParseInt(typeStr, 10, 64); err == nil && (t == 0 || t == 1) {
 			query = query.Where("done=?", t)
@@ -266,12 +425,17 @@ func (h *HandlerTask) save(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "stageCode无效"))
 		return
 	}
+	// 权限校验：只有项目成员才能创建任务
+	memberId := c.GetInt64("memberId")
+	db := gorms.GetDB()
+	if !authz.IsProjectMember(db, memberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
+		return
+	}
 	var assignTo int64
 	if assignToCode != "" {
 		assignTo, _ = codecs.DecryptInt64(assignToCode)
 	}
-	memberId := c.GetInt64("memberId")
-	db := gorms.GetDB()
 	var maxSort int
 	_ = db.Model(&taskRow{}).Where("stage_code=? and deleted=0", sid).Select("coalesce(max(sort),0)").Scan(&maxSort).Error
 	row := &taskRow{
@@ -371,15 +535,44 @@ func (h *HandlerTask) read(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
 		return
 	}
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	memberId := c.GetInt64("memberId")
+	if !authz.IsProjectMember(db.Session(c.Request.Context()), memberId, row.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此任务"))
+		return
+	}
 	var comments []taskCommentRow
 	_ = db.Session(c.Request.Context()).Where("task_id=?", row.Id).Order("id desc").Find(&comments).Error
 	commentOut := make([]gin.H, 0, len(comments))
+	// Batch query comment member info
+	commentMemberIds := make([]int64, 0)
 	for _, cm := range comments {
+		commentMemberIds = append(commentMemberIds, cm.MemberId)
+	}
+	commentMemberMap := make(map[int64]memberRow)
+	if len(commentMemberIds) > 0 {
+		var cMembers []memberRow
+		_ = db.Session(c.Request.Context()).Where("id IN ?", commentMemberIds).Find(&cMembers).Error
+		for _, m := range cMembers {
+			commentMemberMap[m.Id] = m
+		}
+	}
+	for _, cm := range comments {
+		memberInfo := gin.H{"name": "未知用户", "avatar": "", "code": ""}
+		if m, ok := commentMemberMap[cm.MemberId]; ok {
+			memberInfo = gin.H{
+				"name":   m.Name,
+				"avatar": m.Avatar,
+				"code":   codecs.EncryptInt64(m.Id),
+			}
+		}
 		commentOut = append(commentOut, gin.H{
 			"id":          cm.Id,
 			"task_code":   taskCode,
 			"comment":     cm.Comment,
 			"create_time": cm.CreateTime,
+			"member":      memberInfo,
+			"memberCode":  codecs.EncryptInt64(cm.MemberId),
 		})
 	}
 	c.JSON(http.StatusOK, result.Success(gin.H{
@@ -402,10 +595,64 @@ func (h *HandlerTask) taskDone(c *gin.Context) {
 		done = 1
 	}
 	db := gorms.GetDB()
-	if err := db.Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"done": done}).Error; err != nil {
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	memberId := c.GetInt64("memberId")
+	var t taskRow
+	if err := db.Where("id=?", id).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
+	updates := map[string]any{"done": done}
+	if done == 1 {
+		updates["done_time"] = time.Now().UnixMilli()
+	} else {
+		updates["done_time"] = int64(0)
+	}
+	if err := db.Model(&taskRow{}).Where("id=?", id).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "更新失败"))
 		return
 	}
+	// 记录事件日志
+	{
+		eventType := "task:done"
+		remark := "完成了任务"
+		if done == 0 {
+			eventType = "task:redo"
+			remark = "重做了任务"
+		}
+		_ = db.Create(&taskLogRow{
+			ProjectCode:  t.ProjectCode,
+			MemberCode:   memberId,
+			TaskId:       t.Id,
+			EventType:    eventType,
+			EventContent: remark + " " + t.Name,
+			CreateTime:   time.Now().UnixMilli(),
+		}).Error
+		// 如果执行者不是操作者，通知执行者
+		if t.AssignTo != 0 && t.AssignTo != memberId {
+			action := "task:done"
+			if done == 0 {
+				action = "task:redo"
+			}
+			sendTaskNotifyToUser(t.AssignTo, action, gin.H{
+				"taskCode": taskCode,
+				"taskName": t.Name,
+				"done":     done,
+			})
+		}
+	}
+	// 广播任务完成状态变更
+	broadcastTaskChange("task:done", gin.H{
+		"taskCode": taskCode,
+		"taskId":   id,
+		"done":     done,
+	})
+	// 触发工作流规则
+	triggerWorkflowRules(db, t.ProjectCode, t.StageCode, t.Id, "task_done", done)
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }
 
@@ -497,17 +744,87 @@ func (h *HandlerTask) recycleBatch(c *gin.Context) {
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }
 
+// batchDone 批量标记任务完成/重做
+func (h *HandlerTask) batchDone(c *gin.Context) {
+	result := &common.Result{}
+	raw := c.PostForm("taskCodes")
+	doneStr := c.PostForm("done")
+	var codes []string
+	_ = json.Unmarshal([]byte(raw), &codes)
+	ids := make([]int64, 0, len(codes))
+	for _, code := range codes {
+		id, _, ok := authz.CanOperateTask(c, code)
+		if ok {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "没有可操作的任务"))
+		return
+	}
+	done := int8(0)
+	if doneStr == "1" || doneStr == "true" {
+		done = 1
+	}
+	db := gorms.GetDB()
+	batchUpdates := map[string]any{"done": done}
+	if done == 1 {
+		batchUpdates["done_time"] = time.Now().UnixMilli()
+	} else {
+		batchUpdates["done_time"] = int64(0)
+	}
+	if err := db.Model(&taskRow{}).Where("id in ?", ids).Updates(batchUpdates).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(500, "批量操作失败"))
+		return
+	}
+	// 记录事件日志
+	memberId := c.GetInt64("memberId")
+	for _, id := range ids {
+		var t taskRow
+		if err := db.Where("id=?", id).First(&t).Error; err == nil {
+			eventType := "task:done"
+			remark := "完成了任务"
+			if done == 0 {
+				eventType = "task:redo"
+				remark = "重做了任务"
+			}
+			_ = db.Create(&taskLogRow{
+				ProjectCode:  t.ProjectCode,
+				MemberCode:   memberId,
+				TaskId:       t.Id,
+				EventType:    eventType,
+				EventContent: remark + " " + t.Name,
+				CreateTime:   time.Now().UnixMilli(),
+			}).Error
+		}
+	}
+	// WebSocket 广播通知
+	broadcastTaskChange("batchDone", gin.H{
+		"taskIds": ids,
+		"done":    done,
+	})
+	c.JSON(http.StatusOK, result.Success(gin.H{"count": len(ids)}))
+}
+
 func (h *HandlerTask) batchAssignTask(c *gin.Context) {
 	result := &common.Result{}
 	raw := c.PostForm("taskCodes")
 	executorCode := c.PostForm("executorCode")
 	var codes []string
 	_ = json.Unmarshal([]byte(raw), &codes)
+	memberId := c.GetInt64("memberId")
+	db := gorms.GetDB()
 	ids := make([]int64, 0, len(codes))
 	for _, code := range codes {
 		id, err := codecs.DecryptInt64(code)
 		if err == nil {
-			ids = append(ids, id)
+			// 数据隔离：检查当前用户是否是任务所属项目的成员
+			var t taskRow
+			if err := db.Where("id=?", id).First(&t).Error; err == nil {
+				if authz.IsProjectMember(db, memberId, t.ProjectCode) {
+					ids = append(ids, id)
+				}
+			}
 		}
 	}
 	execId, err := codecs.DecryptInt64(executorCode)
@@ -530,11 +847,23 @@ func (h *HandlerTask) setPrivate(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "taskCode无效"))
 		return
 	}
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	db := gorms.GetDB()
+	memberId := c.GetInt64("memberId")
+	var t taskRow
+	if err := db.Where("id=?", id).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
 	private := int8(0)
 	if privateStr == "1" || privateStr == "true" {
 		private = 1
 	}
-	_ = gorms.GetDB().Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"private": private}).Error
+	_ = db.Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"private": private}).Error
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }
 
@@ -547,11 +876,22 @@ func (h *HandlerTask) like(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "taskCode无效"))
 		return
 	}
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	db := gorms.GetDB()
+	memberId := c.GetInt64("memberId")
+	var t taskRow
+	if err := db.Where("id=?", id).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
 	like := 0
 	if likeStr == "1" || likeStr == "true" {
 		like = 1
 	}
-	db := gorms.GetDB()
 	if like == 1 {
 		_ = db.Model(&taskRow{}).Where("id=?", id).UpdateColumn("like", gorm.Expr("coalesce(`like`,0)+1")).Error
 	} else {
@@ -569,11 +909,23 @@ func (h *HandlerTask) star(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "taskCode无效"))
 		return
 	}
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	db := gorms.GetDB()
+	memberId := c.GetInt64("memberId")
+	var t taskRow
+	if err := db.Where("id=?", id).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
 	star := 0
 	if starStr == "1" || starStr == "true" {
 		star = 1
 	}
-	_ = gorms.GetDB().Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"star": star}).Error
+	_ = db.Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"star": star}).Error
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }
 
@@ -592,15 +944,83 @@ func (h *HandlerTask) createComment(c *gin.Context) {
 	result := &common.Result{}
 	taskCode := c.PostForm("taskCode")
 	comment := c.PostForm("comment")
+	mentionsRaw := c.PostForm("mentions")
 	id, err := codecs.DecryptInt64(taskCode)
 	if err != nil {
 		c.JSON(http.StatusOK, result.Fail(400, "taskCode无效"))
 		return
 	}
 	memberId := c.GetInt64("memberId")
+	db := gorms.GetDB()
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	var t taskRow
+	if err := db.Where("id=?", id).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
 	row := &taskCommentRow{TaskId: id, MemberId: memberId, Comment: comment, CreateTime: time.Now().UnixMilli()}
-	_ = gorms.GetDB().Create(row).Error
-	c.JSON(http.StatusOK, result.Success([]int{}))
+	if err := db.Create(row).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(500, "评论创建失败"))
+		return
+	}
+	// 记录评论事件日志（t 已在上方查询）
+	_ = db.Create(&taskLogRow{
+		ProjectCode:  t.ProjectCode,
+		MemberCode:   memberId,
+		TaskId:       t.Id,
+		EventType:    "task:comment",
+		EventContent: comment,
+		CreateTime:   time.Now().UnixMilli(),
+	}).Error
+	// 解析 @mentions 并发送通知
+	var mentions []string
+	if mentionsRaw != "" {
+		_ = json.Unmarshal([]byte(mentionsRaw), &mentions)
+	}
+	if len(mentions) > 0 {
+		// 查询被 @ 成员的 ID
+		for _, mName := range mentions {
+			var m memberRow
+			if err := db.Where("name=?", mName).First(&m).Error; err == nil && m.Id != 0 {
+				// 创建通知记录
+				_ = db.Create(&notifyRow{
+					MemberCode: m.Id,
+					Title:      "你在评论中被提及",
+					Content:    comment,
+					Type:       1, // notice
+					IsRead:     0,
+					CreateTime: time.Now().UnixMilli(),
+					Action:     "task:mention",
+					SendData:   fmt.Sprintf(`{"taskCode":"%s","taskId":%d}`, taskCode, id),
+				}).Error
+				// WebSocket 推送给被 @ 的人
+				sendTaskNotifyToUser(m.Id, "task:mention", gin.H{
+					"taskCode": taskCode,
+					"comment":  comment,
+					"fromUser": memberId,
+				})
+			}
+		}
+	}
+	// 给任务执行者发送评论通知（如果执行者不是评论者本人）
+	if t.AssignTo != 0 && t.AssignTo != memberId {
+		sendTaskNotifyToUser(t.AssignTo, "task:comment", gin.H{
+			"taskCode": taskCode,
+			"comment":  comment,
+			"fromUser": memberId,
+		})
+	}
+	// 广播评论变更
+	broadcastTaskChange("task:comment", gin.H{
+		"taskCode": taskCode,
+		"taskId":   id,
+		"comment":  comment,
+	})
+	c.JSON(http.StatusOK, result.Success(gin.H{"id": row.Id}))
 }
 
 func (h *HandlerTask) sort(c *gin.Context) {
@@ -627,15 +1047,23 @@ func (h *HandlerTask) sort(c *gin.Context) {
 		nextId, _ = codecs.DecryptInt64(nextTaskCode)
 	}
 	db := gorms.GetDB()
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	memberId := c.GetInt64("memberId")
+	var moved taskRow
+	if err := db.Where("id=?", movedId).First(&moved).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, moved.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
 	var list []taskRow
 	if err := db.Where("stage_code=? and deleted=0", stageId).Order("sort asc, id asc").Find(&list).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "排序失败"))
 		return
 	}
-	var moved taskRow
-	if err := db.Where("id=?", movedId).First(&moved).Error; err == nil {
-		moved.StageCode = stageId
-	}
+	moved.StageCode = stageId
 	newList := make([]taskRow, 0, len(list)+1)
 	for _, t := range list {
 		if t.Id == movedId {
@@ -673,6 +1101,8 @@ func (h *HandlerTask) sort(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(500, "排序失败"))
 		return
 	}
+	// 触发工作流规则（任务移动到新阶段）
+	triggerWorkflowRules(db, moved.ProjectCode, stageId, movedId, "task_moved", 0)
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }
 
@@ -702,6 +1132,7 @@ type taskLogRow struct {
 	Id           int64 `gorm:"primaryKey;autoIncrement"`
 	ProjectCode  int64
 	MemberCode   int64
+	TaskId       int64 `gorm:"column:task_id;default:0"`
 	EventType    string
 	EventContent string
 	CreateTime   int64
@@ -714,9 +1145,9 @@ func (h *HandlerTask) assignTask(c *gin.Context) {
 	result := &common.Result{}
 	taskCode := c.PostForm("taskCode")
 	executorCode := c.PostForm("executorCode")
-	id, err := codecs.DecryptInt64(taskCode)
-	if err != nil {
-		c.JSON(http.StatusOK, result.Fail(400, "taskCode无效"))
+	id, _, ok := authz.CanOperateTask(c, taskCode)
+	if !ok {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
 		return
 	}
 	execId, err := codecs.DecryptInt64(executorCode)
@@ -760,7 +1191,14 @@ func (h *HandlerTask) taskSources(c *gin.Context) {
 		return
 	}
 
+	// 数据隔离：检查当前用户是否是项目成员
+	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	if !authz.IsProjectMember(db, memberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
+
 	var rows []struct {
 		StageCode int64  `gorm:"column:stage_code"`
 		StageName string `gorm:"column:stage_name"`
@@ -800,6 +1238,12 @@ func (h *HandlerTask) getListByTaskTag(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Success(gin.H{"list": []any{}, "total": 0}))
 		return
 	}
+	// 数据隔离：检查当前用户是否是项目成员
+	memberId := c.GetInt64("memberId")
+	if !authz.IsProjectMember(gorms.GetDB(), memberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
 	db := gorms.New()
 	session := db.Session(c.Request.Context())
 	query := session.Table("ms_task t").
@@ -828,6 +1272,17 @@ func (h *HandlerTask) taskToTags(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	memberId := c.GetInt64("memberId")
+	var t taskRow
+	if err := db.Where("id=?", id).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此任务"))
+		return
+	}
 	var tags []taskTagRow
 	_ = db.Table("ms_task_tag tg").
 		Joins("join ms_task_tag_rel r on r.tag_id=tg.id").
@@ -837,9 +1292,11 @@ func (h *HandlerTask) taskToTags(c *gin.Context) {
 	out := make([]gin.H, 0, len(tags))
 	for _, t := range tags {
 		out = append(out, gin.H{
-			"code":  codecs.EncryptInt64(t.Id),
-			"name":  t.Name,
-			"color": t.Color,
+			"code": codecs.EncryptInt64(t.Id),
+			"tag": gin.H{
+				"color": t.Color,
+				"name":  t.Name,
+			},
 		})
 	}
 	c.JSON(http.StatusOK, result.Success(out))
@@ -862,6 +1319,17 @@ func (h *HandlerTask) setTag(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB()
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	memberId := c.GetInt64("memberId")
+	var t taskRow
+	if err := db.Where("id=?", taskId).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
 	if action == "remove" {
 		_ = db.Where("task_id=? and tag_id=?", taskId, tagId).Delete(&taskTagRelRow{}).Error
 	} else {
@@ -883,7 +1351,13 @@ func (h *HandlerTask) dateTotalForProject(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Success([]any{}))
 		return
 	}
+	// 数据隔离：检查当前用户是否是项目成员
+	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB().WithContext(c.Request.Context())
+	if !authz.IsProjectMember(db, memberId, pid) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
+		return
+	}
 	var rows []struct {
 		Date  string `gorm:"column:date"`
 		Total int64  `gorm:"column:total"`
@@ -913,16 +1387,45 @@ func (h *HandlerTask) taskLog(c *gin.Context) {
 	page.Bind(c)
 	taskCode := c.PostForm("taskCode")
 	projectCode := c.PostForm("projectCode")
+	onlyComment := c.PostForm("comment")
+	showAll := c.PostForm("all")
 	db := gorms.GetDB().WithContext(c.Request.Context())
 	query := db.Model(&taskLogRow{})
+	memberId := c.GetInt64("memberId")
 	if taskCode != "" {
 		if id, err := codecs.DecryptInt64(taskCode); err == nil && id != 0 {
-			query = query.Where("event_content like ?", "%taskId:"+strconv.FormatInt(id, 10)+"%")
+			query = query.Where("task_id=?", id)
+			// 数据隔离：检查当前用户是否是任务所属项目的成员
+			var t taskRow
+			if err := db.Where("id=?", id).First(&t).Error; err == nil {
+				if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+					c.JSON(http.StatusOK, result.Success(gin.H{"list": []any{}, "total": 0}))
+					return
+				}
+			}
 		}
 	} else if projectCode != "" {
 		if pid, err := codecs.DecryptInt64(projectCode); err == nil && pid != 0 {
+			// 数据隔离：检查当前用户是否是项目成员
+			if !authz.IsProjectMember(db, memberId, pid) {
+				c.JSON(http.StatusOK, result.Success(gin.H{"list": []any{}, "total": 0}))
+				return
+			}
 			query = query.Where("project_code=?", pid)
 		}
+	} else {
+		// 未指定任务和项目时，只返回用户参与的项目日志
+		query = query.Where("project_code IN (SELECT project_code FROM ms_project_member WHERE member_code=?)", memberId)
+	}
+	// 支持仅查看评论
+	if onlyComment == "1" {
+		query = query.Where("event_type=?", "task:comment")
+	}
+	// showAll=1 时不分页
+	if showAll != "1" {
+		var total int64
+		_ = query.Count(&total).Error
+		_ = total // 保留总数供后面使用
 	}
 	var total int64
 	_ = query.Count(&total).Error
@@ -1016,6 +1519,17 @@ func (h *HandlerTask) taskWorkTimeList(c *gin.Context) {
 		return
 	}
 	db := gorms.GetDB()
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	memberId := c.GetInt64("memberId")
+	var t taskRow
+	if err := db.Where("id=?", id).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此任务"))
+		return
+	}
 	var rows []taskWorkTimeRow
 	_ = db.Where("task_id=?", id).Order("id desc").Find(&rows).Error
 
@@ -1062,6 +1576,17 @@ func (h *HandlerTask) saveTaskWorkTime(c *gin.Context) {
 		return
 	}
 	memberId := c.GetInt64("memberId")
+	// 数据隔离：检查当前用户是否是任务所属项目的成员
+	db := gorms.GetDB()
+	var t taskRow
+	if err := db.Where("id=?", id).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
 	workTimeStr := c.PostForm("workTime")
 	var workTime int64
 	_ = json.Unmarshal([]byte(workTimeStr), &workTime)
@@ -1084,9 +1609,26 @@ func (h *HandlerTask) editTaskWorkTime(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "id必填"))
 		return
 	}
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id == 0 {
+	wtId, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || wtId == 0 {
 		c.JSON(http.StatusOK, result.Fail(400, "id无效"))
+		return
+	}
+	db := gorms.GetDB()
+	// 数据隔离：检查当前用户是否是工时关联任务所属项目的成员
+	memberId := c.GetInt64("memberId")
+	var wt taskWorkTimeRow
+	if err := db.Where("id=?", wtId).First(&wt).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "工时记录不存在"))
+		return
+	}
+	var t taskRow
+	if err := db.Where("id=?", wt.TaskId).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
 		return
 	}
 	updates := map[string]any{}
@@ -1104,7 +1646,7 @@ func (h *HandlerTask) editTaskWorkTime(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Success([]int{}))
 		return
 	}
-	if err := gorms.GetDB().Model(&taskWorkTimeRow{}).Where("id=?", id).Updates(updates).Error; err != nil {
+	if err := db.Model(&taskWorkTimeRow{}).Where("id=?", wtId).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "更新失败"))
 		return
 	}
@@ -1119,12 +1661,29 @@ func (h *HandlerTask) delTaskWorkTime(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "code必填"))
 		return
 	}
-	id, err := codecs.DecryptInt64(code)
-	if err != nil || id == 0 {
+	wtId, err := codecs.DecryptInt64(code)
+	if err != nil || wtId == 0 {
 		c.JSON(http.StatusOK, result.Fail(400, "code无效"))
 		return
 	}
-	if err := gorms.GetDB().Where("id=?", id).Delete(&taskWorkTimeRow{}).Error; err != nil {
+	db := gorms.GetDB()
+	// 数据隔离：检查当前用户是否是工时关联任务所属项目的成员
+	memberId := c.GetInt64("memberId")
+	var wt taskWorkTimeRow
+	if err := db.Where("id=?", wtId).First(&wt).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "工时记录不存在"))
+		return
+	}
+	var t taskRow
+	if err := db.Where("id=?", wt.TaskId).First(&t).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
+		return
+	}
+	if !authz.IsProjectMember(db, memberId, t.ProjectCode) {
+		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
+		return
+	}
+	if err := db.Where("id=?", wtId).Delete(&taskWorkTimeRow{}).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "删除失败"))
 		return
 	}
@@ -1161,6 +1720,15 @@ func (h *HandlerTask) uploadFile(c *gin.Context) {
 	projectCode := c.PostForm("projectCode")
 	pid, _ := codecs.DecryptInt64(projectCode)
 	memberId := c.GetInt64("memberId")
+
+	// 数据隔离：检查当前用户是否是项目成员
+	if pid != 0 {
+		db := gorms.GetDB()
+		if !authz.IsProjectMember(db, memberId, pid) {
+			c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
+			return
+		}
+	}
 
 	// 限制文件大小 30MB
 	if header.Size > 30*1024*1024 {
@@ -1204,6 +1772,7 @@ func (h *HandlerTask) uploadFile(c *gin.Context) {
 	row := &taskLogRow{
 		ProjectCode:  pid,
 		MemberCode:   memberId,
+		TaskId:       0,
 		EventType:    "upload_file",
 		EventContent: "上传文件: " + header.Filename,
 		CreateTime:   time.Now().UnixMilli(),
@@ -1240,4 +1809,229 @@ func mapFileType(ext string) string {
 		if ext == e { return "audio" }
 	}
 	return "other"
+}
+
+// ==================== WebSocket 推送 & 通知辅助 ====================
+
+// notifyRow 通知记录（复用 ms_notify 表）
+type notifyRow struct {
+	Id         int64  `gorm:"primaryKey;autoIncrement"`
+	MemberCode int64  `gorm:"column:member_code"`
+	Title      string `gorm:"column:title"`
+	Content    string `gorm:"column:content"`
+	Type       int8   `gorm:"column:type"`
+	IsRead     int8   `gorm:"column:is_read"`
+	CreateTime int64  `gorm:"column:create_time"`
+	Action     string `gorm:"column:action"`
+	SendData   string `gorm:"column:send_data"`
+}
+
+func (*notifyRow) TableName() string { return "ms_notify" }
+
+// broadcastTaskChange 通过 WebSocket 广播任务变更事件
+func broadcastTaskChange(action string, data interface{}) {
+	msg := ws.Message{Action: action, Data: data}
+	ws.Manager.Broadcast(msg)
+}
+
+// sendTaskNotifyToUser 向指定用户发送任务通知（WebSocket + 通知记录）
+func sendTaskNotifyToUser(userId int64, action string, data interface{}) {
+	// WebSocket 推送
+	userIDStr := strconv.FormatInt(userId, 10)
+	msg := ws.Message{Action: action, Data: data}
+	ws.Manager.SendToUser(userIDStr, msg)
+
+	// 写入通知记录
+	title := "任务通知"
+	switch action {
+	case "task:mention":
+		title = "你在评论中被提及"
+	case "task:comment":
+		title = "任务有新评论"
+	case "task:done":
+		title = "任务已完成"
+	case "task:redo":
+		title = "任务被重做"
+	case "task:assign":
+		title = "任务已指派给你"
+	}
+	dataJSON, _ := json.Marshal(data)
+	_ = gorms.GetDB().Create(&notifyRow{
+		MemberCode: userId,
+		Title:      title,
+		Content:    string(dataJSON),
+		Type:       1, // notice
+		IsRead:     0,
+		CreateTime: time.Now().UnixMilli(),
+		Action:     action,
+		SendData:   string(dataJSON),
+	}).Error
+}
+
+// workflowRuleRow 工作流规则数据行
+type workflowRuleRow struct {
+	Id          int64  `gorm:"primaryKey;autoIncrement"`
+	ProjectCode int64  `gorm:"column:project_code"`
+	Name        string `gorm:"column:name"`
+	Description string `gorm:"column:description"`
+	Rules       string `gorm:"column:rules"`
+	Sort        int    `gorm:"column:sort"`
+	CreateTime  int64  `gorm:"column:create_time"`
+	UpdateTime  int64  `gorm:"column:update_time"`
+}
+
+func (*workflowRuleRow) TableName() string { return "ms_task_workflow" }
+
+// workflowRule 解析后的工作流规则
+type workflowRule struct {
+	TaskWorkflowName string `json:"taskWorkflowName"`
+	FirstObj         string `json:"firstObj"`           // 触发的任务列表 code
+	FirstAction      struct {
+		Action int    `json:"action"` // 0=增加/移动, 1=完成, 2=重做, 3=设置执行人
+		Value  string `json:"value"`
+	} `json:"firstAction"`
+	FirstResult struct {
+		Action int    `json:"action"` // 0=自动流转到, 3=默认指派给
+		Value  string `json:"value"`
+	} `json:"firstResult"`
+	LastResult struct {
+		Action int    `json:"action"`
+		Value  string `json:"value"`
+	} `json:"lastResult"`
+	State struct {
+		Action int `json:"action"`
+		Value  int `json:"value"` // -1=不做修改, 1=已完成, 2=未完成
+	} `json:"state"`
+}
+
+// triggerWorkflowRules 工作流规则自动触发引擎
+// eventType: "task_done" (完成/重做), "task_moved" (移动到新阶段), "task_created" (新增)
+func triggerWorkflowRules(db *gorm.DB, projectCode int64, stageCode int64, taskId int64, eventType string, done int8) {
+	// 查询项目下的所有工作流规则
+	var workflows []workflowRuleRow
+	if err := db.Where("project_code=?", projectCode).Find(&workflows).Error; err != nil || len(workflows) == 0 {
+		return
+	}
+
+	stageCodeStr := codecs.EncryptInt64(stageCode)
+
+	for _, wf := range workflows {
+		if wf.Rules == "" {
+			continue
+		}
+
+		var rule workflowRule
+		if err := json.Unmarshal([]byte(wf.Rules), &rule); err != nil {
+			continue
+		}
+
+		// 检查触发条件是否匹配
+		if !matchWorkflowTrigger(rule, stageCodeStr, eventType, done) {
+			continue
+		}
+
+		// 执行工作流结果
+		executeWorkflowResult(db, rule, taskId, projectCode)
+	}
+}
+
+// matchWorkflowTrigger 检查工作流规则触发条件是否匹配
+func matchWorkflowTrigger(rule workflowRule, stageCodeStr string, eventType string, done int8) bool {
+	// 检查任务列表是否匹配
+	if rule.FirstObj != "" && rule.FirstObj != stageCodeStr {
+		return false
+	}
+
+	// 检查触发动作是否匹配
+	action := rule.FirstAction.Action
+	switch eventType {
+	case "task_done":
+		if done == 1 && action != 1 { // 完成
+			return false
+		}
+		if done == 0 && action != 2 { // 重做
+			return false
+		}
+	case "task_moved":
+		if action != 0 { // 增加/移动
+			return false
+		}
+	case "task_created":
+		if action != 0 {
+			return false
+		}
+	default:
+		return false
+	}
+
+	return true
+}
+
+// executeWorkflowResult 执行工作流规则的结果动作
+func executeWorkflowResult(db *gorm.DB, rule workflowRule, taskId int64, projectCode int64) {
+	resultAction := rule.FirstResult.Action
+
+	switch resultAction {
+	case 0:
+		// 自动流转到指定任务列表
+		if rule.FirstResult.Value != "" {
+			targetStageId, err := codecs.DecryptInt64(rule.FirstResult.Value)
+			if err == nil && targetStageId != 0 {
+				_ = db.Model(&taskRow{}).Where("id=?", taskId).Update("stage_code", targetStageId)
+			}
+		}
+		// 如果设置了最终执行者
+		if rule.LastResult.Value != "" {
+			assignToId, err := codecs.DecryptInt64(rule.LastResult.Value)
+			if err == nil && assignToId != 0 {
+				_ = db.Model(&taskRow{}).Where("id=?", taskId).Update("assign_to", assignToId)
+			}
+		}
+	case 3:
+		// 默认指派给指定执行者
+		if rule.FirstResult.Value != "" {
+			assignToId, err := codecs.DecryptInt64(rule.FirstResult.Value)
+			if err == nil && assignToId != 0 {
+				_ = db.Model(&taskRow{}).Where("id=?", taskId).Update("assign_to", assignToId)
+			}
+		}
+		// 如果设置了流转目标
+		if rule.LastResult.Value != "" {
+			targetStageId, err := codecs.DecryptInt64(rule.LastResult.Value)
+			if err == nil && targetStageId != 0 {
+				_ = db.Model(&taskRow{}).Where("id=?", taskId).Update("stage_code", targetStageId)
+			}
+		}
+	}
+
+	// 修改任务状态
+	if rule.State.Value > 0 {
+		if rule.State.Value == 1 {
+			// 标记为已完成
+			_ = db.Model(&taskRow{}).Where("id=?", taskId).Updates(map[string]any{"done": 1})
+		} else if rule.State.Value == 2 {
+			// 标记为未完成
+			_ = db.Model(&taskRow{}).Where("id=?", taskId).Updates(map[string]any{"done": 0})
+		}
+	}
+}
+
+// orgCodeFromContext 从 gin 上下文中获取解密后的 organizationCode
+func orgCodeFromContext(c *gin.Context) int64 {
+	orgVal, _ := c.Get("organizationCode")
+	switch t := orgVal.(type) {
+	case int64:
+		return t
+	case int:
+		return int64(t)
+	case string:
+		decrypted, err := codecs.DecryptInt64(t)
+		if err == nil && decrypted > 0 {
+			return decrypted
+		}
+		i, _ := strconv.ParseInt(t, 10, 64)
+		return i
+	default:
+		return 0
+	}
 }

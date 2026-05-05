@@ -29,7 +29,7 @@
                         </div>
                     </div>
                 </a-layout-header>
-                <a-layout style="padding-top: 65px;">
+                <a-layout style="padding-top: 56px;">
                     <a-sider
                             mode="inline"
                             breakpoint="md"
@@ -115,7 +115,7 @@
                     </a-sider>
                     <a-layout
                             class="main-content"
-                            :style="collapsed ? { paddingLeft: '80px'} : { paddingLeft: '256px'}">
+                            :style="collapsed ? { paddingLeft: '72px'} : { paddingLeft: '240px'}">
                         <a-layout-content>
                             <transition name="router-fade" mode="out-in">
                                 <a-spin :spinning="pageLoading">
@@ -124,9 +124,6 @@
                             </transition>
                         </a-layout-content>
                         <a-footer style="text-align: center">
-                            <template v-if="system">
-                                <span>Copyright © 2018 FlowHub 技术部出品</span>
-                            </template>
                         </a-footer>
                     </a-layout>
                 </a-layout>
@@ -134,6 +131,7 @@
             <Socket ref="socket" v-if="config.WS_URI"></Socket>
         </a-spin>
         <v-uploader></v-uploader>
+        <command-palette ref="commandPalette"/>
     </div>
 </template>
 <script>
@@ -143,6 +141,7 @@
     import HeaderNotice from '../components/layout/header/HeaderNotice';
     import HeaderAvatar from '../components/layout/header/HeaderAvatar';
     import HeaderSelect from '../components/layout/header/HeaderSelect';
+    import CommandPalette from '../components/tools/CommandPalette';
     import VUploader from '../components/tools/VUploader';
     import Socket from '../components/websocket/socket';
     import config from "../config/config";
@@ -165,7 +164,8 @@
             ASider,
             AFooter,
             Socket,
-            VUploader
+            VUploader,
+            CommandPalette,
         },
         data() {
             return {
@@ -273,10 +273,16 @@
             ensureMenuReady() {
                 if (Array.isArray(this.menu) && this.menu.length > 0) {
                     this.checkLayout();
+                    // 确保权限节点已加载
+                    if (!this.$store.state.permissionNodes || this.$store.state.permissionNodes.length === 0) {
+                        this.$store.dispatch('FETCH_PERMISSION_NODES');
+                    }
                     return;
                 }
                 this.$store.dispatch('GET_MENU').then(() => {
                     this.checkLayout();
+                    // 获取权限节点
+                    this.$store.dispatch('FETCH_PERMISSION_NODES');
                 }).catch(() => {
                     this.checkLayout();
                 });

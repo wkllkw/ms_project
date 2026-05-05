@@ -21,11 +21,13 @@ func (*RouterIndex) Route(r *gin.Engine) {
 	h := New()
 	group.POST("/index", h.index)
 	group.POST("/index/_menus", h.menus)
+	group.POST("/index/nodes", h.nodes)
 	group.POST("/index/changeCurrentOrganization", h.changeCurrentOrganization)
 	group.POST("/index/systemConfig", h.systemConfig)
 	group.POST("/index/info", h.info)
 	group.POST("/index/editPersonal", h.editPersonal)
 	group.POST("/index/editPassword", h.editPassword)
 	group.POST("/index/uploadAvatar", h.uploadAvatar)
+	group.POST("/index/uploadImg", h.uploadImg)
 	group.POST("/index/bindClientId", h.bindClientId)
 }
