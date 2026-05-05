@@ -51,6 +51,7 @@ type taskRow struct {
 	DoneTime     int64 `gorm:"column:done_time;default:0"`
 	LikeCount    int `gorm:"column:like"`
 	Star         int
+	WorkTime     int64 `gorm:"column:work_time;default:0"` // 预估工时（分钟）
 }
 
 func (*taskRow) TableName() string { return "ms_task" }
@@ -212,9 +213,9 @@ func taskToResponse(db *gorms.GormConn, c *gin.Context, t taskRow) gin.H {
 	var commentCount int64
 	_ = db.Session(c.Request.Context()).Table("ms_task_comment").Where("task_id=?", t.Id).Count(&commentCount).Error
 	hasComment := commentCount > 0
-	// Sum work_time
-	var totalWorkTime int64
-	_ = db.Session(c.Request.Context()).Table("ms_task_work_time").Where("task_id=?", t.Id).Select("coalesce(sum(work_time),0)").Scan(&totalWorkTime).Error
+	// Sum work_time (分钟)
+	var totalWorkTimeMinutes int64
+	_ = db.Session(c.Request.Context()).Table("ms_task_work_time").Where("task_id=?", t.Id).Select("coalesce(sum(work_time),0)").Scan(&totalWorkTimeMinutes).Error
 	// Parent task info
 	var parentTask any
 	var parentTasks []gin.H
@@ -263,7 +264,8 @@ func taskToResponse(db *gorms.GormConn, c *gin.Context, t taskRow) gin.H {
 		"openBeginTime":  t.BeginTime > 0,
 		"liked":          false,
 		"stared":         t.Star > 0,
-		"work_time":      totalWorkTime,
+		"work_time":      float64(t.WorkTime) / 60.0,       // 预估工时（小时）
+		"total_work_time": float64(totalWorkTimeMinutes) / 60.0, // 实际工时（小时）
 		"sort":           t.Sort,
 		"private":        t.Private,
 		"parentTask":     parentTask,
@@ -499,6 +501,27 @@ func (h *HandlerTask) edit(c *gin.Context) {
 	}
 	if v := c.PostForm("description"); v != "" {
 		updates["description"] = v
+	}
+	if v := c.PostForm("priority"); v != "" {
+		if p, err := strconv.ParseInt(v, 10, 8); err == nil {
+			updates["priority"] = int8(p)
+		}
+	}
+	if v := c.PostForm("status"); v != "" {
+		if s, err := strconv.ParseInt(v, 10, 8); err == nil {
+			updates["status"] = int8(s)
+		}
+	}
+	if v := c.PostForm("assign_to"); v != "" {
+		if a, err := strconv.ParseInt(v, 10, 64); err == nil {
+			updates["assign_to"] = a
+		}
+	}
+	// work_time: 前端传小时，后端转分钟存储
+	if v := c.PostForm("work_time"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			updates["work_time"] = int64(f * 60)
+		}
 	}
 	db := gorms.GetDB()
 	if err := db.Model(&taskRow{}).Where("id=?", id).Updates(updates).Error; err != nil {
@@ -1549,8 +1572,8 @@ func (h *HandlerTask) taskWorkTimeList(c *gin.Context) {
 		if m, ok := memberMap[r.MemberId]; ok {
 			memberInfo = gin.H{"name": m.Name, "avatar": m.Avatar}
 		}
-		// workTime 字段存的是毫秒，转换为小时
-		num := float64(r.WorkTime) / 3600000.0
+		// workTime 字段存的是分钟，转换为小时
+		num := float64(r.WorkTime) / 60.0
 		out = append(out, gin.H{
 			"code":       codecs.EncryptInt64(r.Id),
 			"member":     memberInfo,
@@ -1582,13 +1605,34 @@ func (h *HandlerTask) saveTaskWorkTime(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此任务"))
 		return
 	}
-	workTimeStr := c.PostForm("workTime")
-	var workTime int64
-	_ = json.Unmarshal([]byte(workTimeStr), &workTime)
+	// 前端传 num（小时值）和 timeUnit（可选，默认 hour），转为分钟存储
+	numStr := c.PostForm("num")
+	if numStr == "" {
+		numStr = c.PostForm("workTime") // 兼容旧接口
+	}
+	timeUnit := c.PostForm("timeUnit")
+	if timeUnit == "" {
+		timeUnit = "hour"
+	}
+	var numFloat float64
+	if f, err := strconv.ParseFloat(numStr, 64); err == nil {
+		// 按单位转为分钟
+		switch timeUnit {
+		case "day":
+			numFloat = f * 8 * 60 // 1天=8小时
+		case "hour":
+			numFloat = f * 60
+		case "minute":
+			numFloat = f
+		default:
+			numFloat = f * 60
+		}
+	}
+	workTimeMinutes := int64(numFloat)
 	row := &taskWorkTimeRow{
 		TaskId:     id,
 		MemberId:   memberId,
-		WorkTime:   workTime,
+		WorkTime:   workTimeMinutes,
 		Remark:     c.PostForm("remark"),
 		CreateTime: time.Now().UnixMilli(),
 	}
@@ -1630,11 +1674,29 @@ func (h *HandlerTask) editTaskWorkTime(c *gin.Context) {
 	if v := c.PostForm("remark"); v != "" {
 		updates["remark"] = v
 	}
-	if v := c.PostForm("workTime"); v != "" {
-		var wt int64
-		_ = json.Unmarshal([]byte(v), &wt)
-		if wt > 0 {
-			updates["work_time"] = wt
+	// 前端传 num（数值）和 timeUnit（单位），转为分钟存储
+	numStr := c.PostForm("num")
+	if numStr == "" {
+		numStr = c.PostForm("workTime") // 兼容旧接口
+	}
+	if numStr != "" {
+		timeUnit := c.PostForm("timeUnit")
+		if timeUnit == "" {
+			timeUnit = "hour"
+		}
+		if f, err := strconv.ParseFloat(numStr, 64); err == nil && f > 0 {
+			var minutes float64
+			switch timeUnit {
+			case "day":
+				minutes = f * 8 * 60
+			case "hour":
+				minutes = f * 60
+			case "minute":
+				minutes = f
+			default:
+				minutes = f * 60
+			}
+			updates["work_time"] = int64(minutes)
 		}
 	}
 	if len(updates) == 0 {

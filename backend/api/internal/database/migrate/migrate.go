@@ -39,6 +39,7 @@ type Task struct {
 	Star         int
 	VersionCode  int64  `gorm:"column:version_code;default:0"`
 	FeaturesCode int64  `gorm:"column:features_code;default:0"`
+	WorkTime     int64  `gorm:"column:work_time;default:0"` // 预估工时（分钟）
 }
 
 func (*Task) TableName() string { return "ms_task" }

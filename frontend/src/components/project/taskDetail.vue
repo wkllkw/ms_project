@@ -660,13 +660,13 @@
                                             <div class="field-left" style="width: 100%">
                                                 <a-icon type="clock-circle"/>
                                                 <span class="field-name">工时
-                                                    <span v-if="workTimeList.length"> · 实际工时 {{workTimeTotal}} 小时，工时记录 {{workTimeList.length}} 条，预估工时 {{task.work_time}} 小时   <a
+                                                    <span v-if="workTimeList.length"> · 实际工时 {{formatHours(workTimeTotal)}} 小时，工时记录 {{workTimeList.length}} 条，预估工时 {{formatHours(task.work_time)}} 小时   <a
                                                             class="muted m-l-sm" @click="doPlainWorkTime">
                                                                     <a-icon class="task-item" type="edit"/>
                                                                 </a>
                                                     </span>
                                                     <span v-else>
-                                                         <span v-if="task.work_time"> · 预估工时 {{task.work_time}} 小时</span>
+                                                         <span v-if="task.work_time"> · 预估工时 {{formatHours(task.work_time)}} 小时</span>
                                                          <a-tooltip>
                                                             <template slot="title">
                                                                 <span>设置预估工时</span>
@@ -707,7 +707,7 @@
                                                                         <template v-if="workTime.member">{{workTime.member.name}}</template>
                                                                         <template v-else>待认领</template>
                                                                         {{moment(workTime.begin_time).format('MM月DD日 HH:mm')}}开始 工时为
-                                                                        {{workTime.num}} 小时
+                                                                        {{formatHours(workTime.num)}} 小时
                                                                         <div class="muted"
                                                                              v-show="workTime.content"
                                                                              style="padding-left: 40px;margin-top: 6px;">
@@ -904,14 +904,14 @@
                 <div class="work-time-stats">
                     <div class="work-time-item">
                         <div class="muted title">预估工时</div>
-                        <span class="work-time-num">{{task.work_time}}</span>
+                        <span class="work-time-num">{{formatHours(task.work_time)}}</span>
                         <span>小时</span>
                     </div>
                     <div class="work-time-item">
                         <div class="muted title">剩余工时</div>
                         <span class="work-time-num">
                             <template v-if="task.work_time - workTimeTotal < 0">0</template>
-                            <template v-else>{{task.work_time - workTimeTotal}}</template>
+                            <template v-else>{{formatHours(task.work_time - workTimeTotal)}}</template>
                         </span>
                         <span>小时</span>
                     </div>
@@ -941,12 +941,20 @@
                             <a-input
                                     type="text"
                                     placeholder="请输入数字"
-                                    addonAfter="小时"
                                     v-decorator="[
                                 'num',
                                 {rules: [{ required: true, message: '请输入消耗时间' }], validateTrigger: 'change'}
                             ]"
                             >
+                                <a-select
+                                    slot="addonAfter"
+                                    v-model="workTimeDo.timeUnit"
+                                    style="width: 72px"
+                                >
+                                    <a-select-option value="hour">小时</a-select-option>
+                                    <a-select-option value="day">天</a-select-option>
+                                    <a-select-option value="minute">分钟</a-select-option>
+                                </a-select>
                             </a-input>
                         </a-form-item>
                     </a-col>
@@ -985,12 +993,20 @@
                     <a-input
                             type="text"
                             placeholder="请输入数字"
-                            addonAfter="小时"
                             v-decorator="[
                                 'work_time',
                                 {rules: [{ required: true, message: '请输入预估工时' }], validateTrigger: 'change'}
                             ]"
                     >
+                        <a-select
+                            slot="addonAfter"
+                            v-model="plainWorkTime.timeUnit"
+                            style="width: 72px"
+                        >
+                            <a-select-option value="hour">小时</a-select-option>
+                            <a-select-option value="day">天</a-select-option>
+                            <a-select-option value="minute">分钟</a-select-option>
+                        </a-select>
                     </a-input>
                 </a-form-item>
             </a-form>
@@ -1148,11 +1164,13 @@
                     modalTitle: '登记工时记录',
                     modalStatus: false,
                     confirmLoading: false,
+                    timeUnit: 'hour',
                 },
                 plainWorkTime: {
                     form: this.$form.createForm(this),
                     modalTitle: '设置预估工时',
                     modalStatus: false,
+                    timeUnit: 'hour',
                     confirmLoading: false,
                 },
                 //显示评论提及
@@ -1748,6 +1766,7 @@
             doWorkTime(workTime = false) {
                 let app = this;
                 this.workTimeDo.modalStatus = true;
+                this.workTimeDo.timeUnit = 'hour';
                 if (workTime) {
                     this.workTimeDo.info = workTime;
                     this.$nextTick(function () {
@@ -1786,7 +1805,15 @@
                 this.plainWorkTime.form.validateFields(
                     (err, values) => {
                         if (!err) {
-                            app.editTask({work_time: values.work_time});
+                            // 将输入值转为小时传给后端
+                            let hours = parseFloat(values.work_time) || 0;
+                            const unit = app.plainWorkTime.timeUnit;
+                            if (unit === 'day') {
+                                hours = hours * 8; // 1天=8小时
+                            } else if (unit === 'minute') {
+                                hours = hours / 60;
+                            }
+                            app.editTask({work_time: hours});
                             app.plainWorkTime.modalStatus = false;
                         }
                     }
@@ -1801,6 +1828,7 @@
                             let data = {
                                 beginTime: values.begin_time.format('YYYY-MM-DD HH:mm'),
                                 num: values.num,
+                                timeUnit: app.workTimeDo.timeUnit,
                                 content: values.content,
                                 taskCode: app.code,
                             };
@@ -1825,6 +1853,13 @@
                         }
                     }
                 );
+            },
+            formatHours(val) {
+                if (val === null || val === undefined || val === '') return '0';
+                const num = parseFloat(val);
+                if (isNaN(num)) return '0';
+                // 最多保留2位小数，去除尾部多余的0
+                return Math.round(num * 100) / 100;
             },
             checkLink(text) {
                 let reg = /(http:\/\/|https:\/\/)((\w|=|\?|\.|\/|&|-)+)/g;
