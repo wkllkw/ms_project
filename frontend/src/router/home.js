@@ -130,6 +130,12 @@ export default [
         meta: {model: 30, info: {show_slider: true, is_inner: false}, permission: 'members.index'},
     },
     {
+        name: 'organizationIndex',
+        path: '/organization/index',
+        component: resolve => require(['@/views/organization/index'], resolve),
+        meta: {model: 30, info: {show_slider: true, is_inner: false}, permission: 'project.manage'},
+    },
+    {
         name: 'notifyNotice',
         path: '/notify/notice',
         component: resolve => require(['@/views/notify/notice'], resolve),
