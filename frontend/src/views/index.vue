@@ -132,6 +132,7 @@
         </a-spin>
         <v-uploader></v-uploader>
         <command-palette ref="commandPalette"/>
+        <ai-assistant v-if="logged"></ai-assistant>
     </div>
 </template>
 <script>
@@ -143,6 +144,7 @@
     import HeaderSelect from '../components/layout/header/HeaderSelect';
     import CommandPalette from '../components/tools/CommandPalette';
     import VUploader from '../components/tools/VUploader';
+    import AiAssistant from '../components/tools/AiAssistant';
     import Socket from '../components/websocket/socket';
     import config from "../config/config";
     import {notice} from "../assets/js/notice";
@@ -166,6 +168,7 @@
             Socket,
             VUploader,
             CommandPalette,
+            AiAssistant,
         },
         data() {
             return {

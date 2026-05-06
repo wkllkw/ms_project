@@ -13,6 +13,7 @@ import (
 	_ "test.com/project-api/api/node"
 	_ "test.com/project-api/api/notify"
 	_ "test.com/project-api/api/organization"
+	_ "test.com/project-api/api/assistant"
 	_ "test.com/project-api/api/project"
 	_ "test.com/project-api/api/project_collect"
 	_ "test.com/project-api/api/project_features"
