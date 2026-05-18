@@ -278,6 +278,7 @@ func (h *HandlerAccount) auth(c *gin.Context) {
 	result := &common.Result{}
 	idStr := c.PostForm("id")
 	authStr := c.PostForm("auth")
+	orgCodeStr := c.PostForm("organizationCode")
 	if idStr == "" {
 		c.JSON(http.StatusOK, result.Fail(400, "id必填"))
 		return
@@ -295,8 +296,41 @@ func (h *HandlerAccount) auth(c *gin.Context) {
 		}
 		id = parsedId
 	}
-	// 将权限角色ID存储到 ms_project_member 的 authorize 字段（全局授权）
 	db := gorms.GetDB().WithContext(c.Request.Context())
+
+	// 如果指定了 organizationCode，则设置组织级角色
+	if orgCodeStr != "" {
+		orgCode, err := codecs.DecryptInt64(orgCodeStr)
+		if err != nil || orgCode == 0 {
+			orgCode, _ = strconv.ParseInt(orgCodeStr, 10, 64)
+		}
+		if orgCode > 0 {
+			if authStr == "" || authStr == "0" {
+				// 移除组织角色
+				db.Table("ms_organization_auth").Where("member_code=? AND organization_code=?", id, orgCode).Delete(nil)
+			} else {
+				authId, _ := strconv.ParseInt(authStr, 10, 64)
+				// Upsert
+				var count int64
+				db.Table("ms_organization_auth").Where("member_code=? AND organization_code=?", id, orgCode).Count(&count)
+				if count > 0 {
+					db.Table("ms_organization_auth").Where("member_code=? AND organization_code=?", id, orgCode).
+						Update("auth_id", authId)
+				} else {
+					db.Table("ms_organization_auth").Create(map[string]interface{}{
+						"organization_code": orgCode,
+						"member_code":       id,
+						"auth_id":           authId,
+						"create_time":       time.Now().UnixMilli(),
+					})
+				}
+			}
+			c.JSON(http.StatusOK, result.Success([]int{}))
+			return
+		}
+	}
+
+	// 否则保持原有全局项目级授权行为（向后兼容）
 	_ = db.Table("ms_project_member").Where("member_code=?", id).Update("authorize", authStr).Error
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }

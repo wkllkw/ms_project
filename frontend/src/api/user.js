@@ -109,10 +109,6 @@ export function _bindMail(data) {
     return $http.post('project/login/_bindMail', data);
 }
 
-export function _unbindDingtalk(data) {
-    return $http.post('project/login/_unbindDingtalk', data);
-}
-
 export function _currentMember(data) {
     return $http.post('project/login/_currentMember', data);
 }

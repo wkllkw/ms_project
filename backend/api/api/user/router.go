@@ -25,6 +25,9 @@ func (*RouterUser) Route(r *gin.Engine) {
 	r.POST("/project/login/register", h.register)
 	r.POST("/project/login", h.login)
 	r.POST("/project/login/_out", h._out)
+	// 忘记密码（无需认证）
+	r.POST("/project/login/_getMailCaptcha", h.getMailCaptcha)
+	r.POST("/project/login/_resetPasswordByMail", h.resetPasswordByMail)
 	// 需要认证的路由
 	authGroup := r.Group("/project")
 	authGroup.Use(midd.TokenVerify())

@@ -1,7 +1,9 @@
-// 全局样式美化 - 极简现代风格 (Notion/Linear)
-// 在简洁基础上增加精致微交互、视觉层次与动效
+// ============================================================
+// FlowHub Modern UI v2.0 — 全局组件精美化
+// 设计语言：Linear × Notion × Vercel
+// ============================================================
 
-// ========== 滚动条美化 ==========
+// ========== 滚动条 ==========
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -41,11 +43,6 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes countUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out;
 }
@@ -58,7 +55,7 @@
   animation: scaleIn 0.2s ease-out;
 }
 
-// 骨架屏 shimmer 加载效果
+// 骨架屏
 .skeleton-loading {
   background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 37%, #f0f0f0 63%);
   background-size: 400px 100%;
@@ -82,12 +79,11 @@
   &:nth-child(n+9) { animation-delay: 0.18s; }
 }
 
-// ========== Ant Design 组件全局美化 ==========
-
-// 按钮 - flat 风格 + 微交互
+// ========== 按钮 ==========
 .ant-btn {
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 500;
+  font-size: 13px;
   transition: all 0.15s ease;
   box-shadow: none;
 
@@ -104,101 +100,101 @@
     border: none;
 
     &:hover {
-      background: #5a96fa;
-      box-shadow: 0 2px 8px rgba(58, 130, 248, 0.25);
+      background: #6ba1ff;
+      box-shadow: 0 2px 8px rgba(79, 140, 255, 0.25);
     }
 
     &:active {
-      background: #2a72e8;
-      box-shadow: 0 1px 3px rgba(58, 130, 248, 0.15);
+      background: #3d73e0;
+      box-shadow: 0 1px 3px rgba(79, 140, 255, 0.15);
     }
   }
 
   &-danger {
     border: none;
+    color: #ef4444;
 
     &:hover {
-      opacity: 0.85;
+      background: rgba(239, 68, 68, 0.06);
+      border-color: transparent;
+      color: #ef4444;
     }
   }
 
   &-default {
-    border-color: #e0e0e0;
-    color: rgba(0, 0, 0, 0.75);
+    border-color: #e4e7eb;
+    color: #5f6773;
 
     &:hover {
-      border-color: @primary-color;
-      color: @primary-color;
+      border-color: #4f8cff;
+      color: #4f8cff;
+      background: #eef4ff;
     }
   }
 }
 
-// 输入框 - 聚焦光环效果
+// ========== 输入框 ==========
 .ant-input {
-  border-radius: 6px;
+  border-radius: 8px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border-color: #e4e7eb;
 
   &:hover {
-    border-color: #b0b0b0;
+    border-color: #bdc4cd;
   }
 
   &:focus {
-    border-color: @primary-color;
-    box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.1);
+    border-color: #4f8cff;
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.08);
   }
 }
 
 .ant-input-affix-wrapper {
-  border-radius: 6px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    border-color: #b0b0b0;
-  }
-
-  &:focus,
-  &-focused {
-    border-color: @primary-color;
-    box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.1);
-  }
-}
-
-// 选择器 - 聚焦光环
-.ant-select-selection {
-  border-radius: 6px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    border-color: #b0b0b0;
-  }
-
-  &:focus {
-    border-color: @primary-color;
-    box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.1);
-  }
-}
-
-// 卡片 - 精致阴影 + hover 提升
-.ant-card {
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  border: 1px solid #f0f0f0;
+  border-color: #e4e7eb;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: #bdc4cd;
+  }
+
+  &-focused {
+    border-color: #4f8cff;
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.08);
+  }
+}
+
+// ========== 选择器 ==========
+.ant-select-selection {
+  border-radius: 8px;
+  border-color: #e4e7eb;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: #bdc4cd;
+  }
+}
+
+// ========== 卡片 ==========
+.ant-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
+  border: 1px solid #eef0f2;
   transition: border-color 0.2s ease, box-shadow 0.25s ease;
 
   &:hover {
-    border-color: rgba(58, 130, 248, 0.25);
+    border-color: rgba(79, 140, 255, 0.25);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   }
 
   &-head {
-    border-bottom: 1px solid #f0f0f0;
-    padding: 14px 20px;
+    border-bottom: 1px solid #eef0f2;
+    padding: 16px 24px;
 
     &-title {
       font-weight: 600;
       font-size: 15px;
 
-      // 标题左侧装饰线
       &::before {
         content: '';
         display: inline-block;
@@ -215,14 +211,14 @@
   }
 
   &-body {
-    padding: 20px;
+    padding: 24px;
   }
 }
 
-// 标签 - 微透明度变化
+// ========== 标签 ==========
 .ant-tag {
-  border-radius: 4px;
-  padding: 1px 8px;
+  border-radius: 6px;
+  padding: 2px 10px;
   font-size: 12px;
   font-weight: 500;
   transition: opacity 0.15s ease;
@@ -232,15 +228,17 @@
   }
 }
 
-// 徽章
+// ========== 徽章 ==========
 .ant-badge {
   &-count {
     border-radius: 8px;
     box-shadow: none;
+    font-size: 11px;
+    font-weight: 600;
   }
 }
 
-// 头像 - 微交互
+// ========== 头像 ==========
 .ant-avatar {
   transition: opacity 0.15s ease, box-shadow 0.15s ease;
 
@@ -250,39 +248,30 @@
   }
 }
 
-// 下拉菜单 - 入场动效
+// ========== 下拉菜单 ==========
 .ant-dropdown-menu {
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  padding: 4px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 6px;
   animation: scaleIn 0.15s ease-out;
 
   &-item {
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 8px 12px;
-    transition: background-color 0.1s ease, color 0.1s ease;
-    color: rgba(0, 0, 0, 0.65);
+    transition: background 0.1s ease, color 0.1s ease;
+    color: #5f6773;
 
     &:hover {
-      background: #f5f5f5;
-      color: rgba(0, 0, 0, 0.85);
+      background: #f7f8fa;
+      color: #1a1d23;
     }
   }
 }
 
-// 工具提示
-.ant-tooltip {
-  &-inner {
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 13px;
-  }
-}
-
-// 模态框 - 入场动效
+// ========== 模态框 ==========
 .ant-modal {
   &-content {
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     animation: fadeInUp 0.2s ease-out;
@@ -290,8 +279,8 @@
 
   &-header {
     background: #fff;
-    border-bottom: 1px solid #f0f0f0;
-    padding: 16px 20px;
+    border-bottom: 1px solid #eef0f2;
+    padding: 20px 24px;
   }
 
   &-title {
@@ -300,25 +289,25 @@
   }
 
   &-body {
-    padding: 20px;
+    padding: 24px;
   }
 
   &-footer {
-    border-top: 1px solid #f0f0f0;
-    padding: 12px 20px;
+    border-top: 1px solid #eef0f2;
+    padding: 16px 24px;
   }
 }
 
-// 抽屉
+// ========== 抽屉 ==========
 .ant-drawer {
   &-content {
-    border-radius: 10px 0 0 10px;
+    border-radius: 12px 0 0 12px;
   }
 
   &-header {
     background: #fff;
-    border-bottom: 1px solid #f0f0f0;
-    padding: 16px 20px;
+    border-bottom: 1px solid #eef0f2;
+    padding: 20px 24px;
   }
 
   &-title {
@@ -327,75 +316,124 @@
   }
 }
 
-// 表单
+// ========== 表单 ==========
 .ant-form {
   &-item {
     &-label {
       font-weight: 500;
-      color: rgba(0, 0, 0, 0.65);
+      color: #5f6773;
     }
   }
 }
 
-// 表格 - 行hover高亮
+// ========== 现代 Table (SaaS 风格) ==========
 .ant-table {
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #f0f0f0;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
 
   &-thead > tr > th {
-    background: #fafafa;
+    background: #f7f8fa;
     font-weight: 600;
-    color: rgba(0, 0, 0, 0.75);
-    padding: 12px 16px;
+    color: #9ca3af;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #eef0f2;
+    border-top: none;
+    height: auto;
+    line-height: 1.4;
   }
 
   &-tbody > tr > td {
-    padding: 12px 16px;
-    transition: background-color 0.15s ease;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #5f6773;
+    border-bottom: 1px solid #eef0f2;
+    line-height: 1.5;
+    vertical-align: middle;
+    transition: background 0.12s ease;
   }
 
   &-tbody > tr:hover > td {
-    background: rgba(58, 130, 248, 0.03);
+    background: #f7f8fa !important;
   }
 }
 
-// 分页 - 激活态微光
+// ========== 分页 ==========
 .ant-pagination {
+  margin-top: 24px;
+
   &-item {
     border-radius: 6px;
     transition: all 0.15s ease;
-    border-color: #e0e0e0;
+    border-color: #e4e7eb;
+    min-width: 32px;
+    height: 32px;
+    line-height: 32px;
 
     &:hover {
-      border-color: @primary-color;
-      a { color: @primary-color; }
+      border-color: #4f8cff;
+      a { color: #4f8cff; }
     }
 
     &-active {
-      background: @primary-color;
-      border-color: @primary-color;
-      box-shadow: 0 2px 6px rgba(58, 130, 248, 0.25);
-      a { color: #fff !important; }
+      background: #eef4ff;
+      border-color: #eef4ff;
+      box-shadow: none;
+      a { color: #4f8cff !important; font-weight: 600; }
     }
   }
 
-  &-prev,
-  &-next {
+  &-prev, &-next {
     border-radius: 6px;
   }
 }
 
-// 消息提示
+// ========== Tabs (胶囊风格) ==========
+.ant-tabs {
+  &-bar {
+    border-bottom: none !important;
+  }
+
+  &-tab {
+    padding: 6px 16px !important;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #5f6773;
+    border: none !important;
+    transition: all 0.15s ease;
+    margin-right: 4px;
+
+    &:hover {
+      color: #1a1d23;
+      background: #f7f8fa;
+    }
+
+    &.ant-tabs-tab-active {
+      color: #4f8cff;
+      background: #eef4ff;
+      font-weight: 600;
+    }
+  }
+
+  &-ink-bar {
+    display: none !important;
+  }
+}
+
+// ========== 消息提示 ==========
 .ant-message {
   &-notice-content {
-    border-radius: 6px;
+    border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     padding: 10px 16px;
   }
 }
 
-// 通知
+// ========== 通知 ==========
 .ant-notification {
   &-notice {
     border-radius: 8px;
@@ -404,35 +442,29 @@
   }
 }
 
-// 进度条
+// ========== 进度条 ==========
 .ant-progress {
   &-inner {
     border-radius: 4px;
   }
-
   &-bg {
     border-radius: 4px;
   }
 }
 
-// 树形控件 - hover微反馈
+// ========== 树形控件 ==========
 .ant-tree {
   &-node-content-wrapper {
     border-radius: 4px;
-    transition: background-color 0.15s ease;
+    transition: background 0.15s ease;
 
     &:hover {
-      background: rgba(58, 130, 248, 0.05);
+      background: rgba(79, 140, 255, 0.05);
     }
   }
 }
 
-// 开关
-.ant-switch {
-  border-radius: 12px;
-}
-
-// 上传组件
+// ========== 上传 ==========
 .ant-upload {
   &-drag {
     border-radius: 8px;
@@ -444,52 +476,36 @@
   }
 }
 
-// 标签页 - ink-bar 加粗
-.ant-tabs {
-  &-tab {
-    transition: color 0.15s ease;
-
-    &:hover {
-      color: @primary-color;
-    }
-  }
-
-  &-ink-bar {
-    border-radius: 1px;
-    height: 2px;
-  }
-}
-
-// 折叠面板
+// ========== 折叠面板 ==========
 .ant-collapse {
   border-radius: 8px;
-  border-color: #f0f0f0;
+  border-color: #eef0f2;
 
   &-header {
     font-weight: 500;
   }
 }
 
-// 列表 - hover微妙高亮
+// ========== 列表 ==========
 .ant-list {
   &-item {
-    transition: background-color 0.15s ease;
+    transition: background 0.15s ease;
 
     &:hover {
-      background: rgba(58, 130, 248, 0.02);
+      background: rgba(79, 140, 255, 0.02);
     }
   }
 }
 
-// 描述列表
+// ========== 描述列表 ==========
 .ant-descriptions {
   &-item-label {
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.55);
+    color: #5f6773;
   }
 }
 
-// 警告提示
+// ========== 警告 ==========
 .ant-alert {
   border-radius: 6px;
 
@@ -498,42 +514,39 @@
   }
 }
 
-// 分割线 - 渐隐效果
+// ========== 分割线 ==========
 .ant-divider {
   &.divider-fade {
     border: none;
     height: 1px;
-    background: linear-gradient(90deg, transparent, #e0e0e0 20%, #e0e0e0 80%, transparent);
+    background: linear-gradient(90deg, transparent, #e4e7eb 20%, #e4e7eb 80%, transparent);
     margin: 16px 0;
   }
 }
 
-// ========== 全局激活态微光 ==========
-.ant-btn-primary:not(:disabled) {
-  &:focus {
-    box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.2);
-  }
+// ========== 聚焦光环 ==========
+.ant-btn-primary:not(:disabled):focus {
+  box-shadow: 0 0 0 2px rgba(79, 140, 255, 0.2);
 }
 
 .ant-switch-checked {
-  box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.15);
+  box-shadow: 0 0 0 2px rgba(79, 140, 255, 0.15);
 }
 
 .ant-checkbox-checked .ant-checkbox-inner {
-  box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.12);
+  box-shadow: 0 0 0 2px rgba(79, 140, 255, 0.12);
 }
 
-// ========== 拖拽状态全局样式 ==========
-
+// ========== 拖拽状态 ==========
 body.is-dragging-task {
   cursor: grabbing !important;
   * { cursor: grabbing !important; }
 
   .scrum-stage-tasks,
   .scrum-stage-tasks-done {
-    background: rgba(58, 130, 248, 0.04);
+    background: rgba(79, 140, 255, 0.04);
     border-radius: 4px;
-    border: 1px dashed rgba(58, 130, 248, 0.3);
+    border: 1px dashed rgba(79, 140, 255, 0.3);
   }
 }
 
@@ -542,7 +555,7 @@ body.is-dragging-stage {
   * { cursor: grabbing !important; }
 
   .board-scrum-stages {
-    background: rgba(58, 130, 248, 0.02);
+    background: rgba(79, 140, 255, 0.02);
   }
 }
 
@@ -550,4 +563,63 @@ body.is-dragging-task,
 body.is-dragging-stage {
   user-select: none !important;
   -webkit-user-select: none !important;
+}
+
+// ========== 统计卡片 ==========
+.stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  border: 1px solid #eef0f2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: rgba(79, 140, 255, 0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: 500;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1d23;
+    margin-top: 4px;
+  }
+}
+
+// ========== 空状态 ==========
+.empty-state {
+  text-align: center;
+  padding: 60px 24px;
+
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    background: #f7f8fa;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #9ca3af;
+  }
+
+  .empty-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #5f6773;
+    margin-bottom: 4px;
+  }
+
+  .empty-desc {
+    font-size: 13px;
+    color: #9ca3af;
+  }
 }

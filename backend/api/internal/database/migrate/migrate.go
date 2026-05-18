@@ -336,6 +336,17 @@ type TaskStagesTemplate struct {
 
 func (*TaskStagesTemplate) TableName() string { return "ms_task_stages_template" }
 
+// OrganizationAuth 组织级角色授权表
+type OrganizationAuth struct {
+	Id               int64 `gorm:"primaryKey;autoIncrement"`
+	OrganizationCode int64 `gorm:"column:organization_code;index"`
+	MemberCode       int64 `gorm:"column:member_code;index"`
+	AuthId           int64 `gorm:"column:auth_id"` // 引用 ms_project_auth.id
+	CreateTime       int64 `gorm:"column:create_time"`
+}
+
+func (*OrganizationAuth) TableName() string { return "ms_organization_auth" }
+
 func AutoMigrate() error {
 	db := gorms.GetDB()
 	return db.AutoMigrate(
@@ -366,5 +377,7 @@ func AutoMigrate() error {
 		&ProjectVersion{},
 		&ProjectVersionLog{},
 		&TaskStagesTemplate{},
+		// 组织级角色授权
+		&OrganizationAuth{},
 	)
 }

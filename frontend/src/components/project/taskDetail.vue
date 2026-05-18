@@ -1258,6 +1258,11 @@
                     this.changeModalHeight();
                 })()
             };
+            // 处理从通知链接跳转过来时滚动到评论区
+            if (this.$route.query.scrollTo === 'comment') {
+                this._scrollRetryCount = 0;
+                this._tryScrollToComment();
+            }
             document.onkeydown = (event) => {
                 var e = event || window.event;
                 if (13 == e.keyCode && e.ctrlKey) {
@@ -1296,6 +1301,19 @@
             detailClose() {
                 this.$emit('close', this.task);
                 // this.$router.push(`/project/space/task/${this.task.project_code}`);
+            },
+            _tryScrollToComment() {
+                // 重试滚动到评论区，最多尝试 10 次（每次间隔 300ms）
+                if (this._scrollRetryCount >= 10) return;
+                this._scrollRetryCount++;
+                this.$nextTick(() => {
+                    const el = document.getElementById('footer');
+                    if (el) {
+                        el.scrollIntoView({behavior: 'smooth', block: 'end'});
+                    } else {
+                        setTimeout(() => this._tryScrollToComment(), 300);
+                    }
+                });
             },
             clearMemberMenu() {
                 this.visibleTaskTagMenu = false;

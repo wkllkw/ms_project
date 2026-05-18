@@ -21,9 +21,7 @@
                 <div class="desc">{{desc}}</div>
                 <div class="sub-desc">{{subDesc}}</div>
                 <div class="actions">
-                    <router-link :to="url">
-                        <a-button type="primary" size="large" icon="home">{{urlText}}</a-button>
-                    </router-link>
+                    <a-button type="primary" size="large" icon="home" @click="goHome">{{urlText}}</a-button>
                     <a-button size="large" icon="rollback" class="action-back" @click="goBack">返回上一页</a-button>
                 </div>
             </div>
@@ -31,7 +29,8 @@
     </div>
 </template>
 <script>
-    import {getStore} from "../../assets/js/storage";
+    import {getStore, removeStore} from "../../assets/js/storage";
+    import {getFirstAvailableRoute} from "../../assets/js/utils";
 
     export default {
         props: {
@@ -56,26 +55,23 @@
         methods: {
             getHomeUrl() {
                 const currentOrganization = getStore('currentOrganization', true);
-                const homePath = currentOrganization ? '/home/' + currentOrganization.code : '/home';
-                // 检查用户是否有 home 权限，没有则找第一个有权限的路由
                 const permissionNodes = getStore('permissionNodes', true) || [];
-                if (Array.isArray(permissionNodes) && permissionNodes.length > 0 && !permissionNodes.includes('home')) {
-                    // 根据权限节点映射到可访问的路由
-                    const nodeRouteMap = {
-                        'project.list': '/project/list/my',
-                        'project.template': '/project/template',
-                        'project.analysis': '/project/analysis',
-                        'notify.notice': '/notify/notice',
-                        'calendar': '/calendar',
-                        'members.index': '/members',
-                    };
-                    for (const node of permissionNodes) {
-                        if (nodeRouteMap[node]) {
-                            return nodeRouteMap[node];
-                        }
-                    }
+                return getFirstAvailableRoute(permissionNodes, currentOrganization);
+            },
+            goHome() {
+                // 如果目标 URL 是登录页，说明用户没有任何可访问权限
+                // 此时应清除登录状态再跳转，避免路由守卫拦截导致错误
+                if (this.url === '/member/login') {
+                    removeStore('tokenList');
+                    removeStore('userInfo');
+                    removeStore('permissionNodes');
+                    removeStore('currentOrganization');
+                    this.$store.commit('SET_LOGOUT');
+                    // 使用 location.replace 避免路由守卫介入
+                    window.location.replace('/#/member/login');
+                    return;
                 }
-                return homePath;
+                this.$router.push(this.url);
             },
             goBack() {
                 this.$router.go(-1);

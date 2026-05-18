@@ -86,7 +86,10 @@ $http.interceptors.response.use(
                     title: response.msg !== '' ? response.msg : '无权限操作资源，访问被拒绝',
                 }, 'notice', 'error', 5);
                 if ($router.currentRoute.path !== HOME_PAGE) {
-                    $router.replace(HOME_PAGE).catch(() => {});
+                    const permNodes = getStore('permissionNodes', true) || [];
+                    const org = getStore('currentOrganization', true);
+                    const fallback = utils.getFirstAvailableRoute(permNodes, org);
+                    $router.replace(fallback).catch(() => {});
                 }
                 return Promise.resolve(response);
             case 4041:
@@ -95,7 +98,10 @@ $http.interceptors.response.use(
                     title: response.msg !== '' ? response.msg : '资源不存在',
                 }, 'notice', 'warning', 5);
                 if ($router.currentRoute.path !== HOME_PAGE) {
-                    $router.replace(HOME_PAGE).catch(() => {});
+                    const permNodes = getStore('permissionNodes', true) || [];
+                    const org = getStore('currentOrganization', true);
+                    const fallback = utils.getFirstAvailableRoute(permNodes, org);
+                    $router.replace(fallback).catch(() => {});
                 }
                 return Promise.resolve(response);
         }

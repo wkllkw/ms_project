@@ -136,6 +136,12 @@ export default [
         meta: {model: 30, info: {show_slider: true, is_inner: false}, permission: 'project.manage'},
     },
     {
+        name: 'organizationMembers',
+        path: '/organization/members',
+        component: resolve => require(['@/views/organization/members/index'], resolve),
+        meta: {model: 30, info: {show_slider: true, is_inner: false}, permission: 'organization.member'},
+    },
+    {
         name: 'notifyNotice',
         path: '/notify/notice',
         component: resolve => require(['@/views/notify/notice'], resolve),
@@ -144,7 +150,7 @@ export default [
     {
         name: 'notifySystem',
         path: '/notify/system',
-        component: resolve => require(['@/views/notify/system'], resolve),
+        component: resolve => require(['@/views/notify/notice'], resolve),
         meta: {model: 20, info: {show_slider: true, is_inner: false}, permission: 'notify.system'},
     },
     {

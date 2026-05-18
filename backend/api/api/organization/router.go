@@ -24,10 +24,19 @@ func (*RouterOrganization) Route(r *gin.Engine) {
 	group.POST("", h.getOrganizationList)
 	group.POST("/_getOrgList", h.getOrgList)
 	group.POST("/_quitOrganization", h.quitOrganization)
-	// 组织管理操作：需要 project.manage 节点权限
-	manageGroup := group.Group("")
-	manageGroup.Use(midd.NodeVerify("project.manage"))
-	manageGroup.POST("/save", h.createOrganization)
-	manageGroup.POST("/edit", h.editOrganization)
-	manageGroup.POST("/delete", h.deleteOrganization)
+
+	// 组织设置操作：需要 organization.setting 节点权限
+	settingGroup := group.Group("")
+	settingGroup.Use(midd.OrgNodeVerify("organization.setting"))
+	settingGroup.POST("/save", h.createOrganization)
+	settingGroup.POST("/edit", h.editOrganization)
+	settingGroup.POST("/delete", h.deleteOrganization)
+
+	// 组织成员管理：需要 organization.member 节点权限
+	memberGroup := group.Group("")
+	memberGroup.Use(midd.OrgNodeVerify("organization.member"))
+	memberGroup.POST("/_listMembers", h.listMembersWithAuth)
+	memberGroup.POST("/_setMemberAuth", h.setMemberAuth)
+	memberGroup.POST("/_removeMemberAuth", h.removeMemberAuth)
+	memberGroup.POST("/_getMemberAuth", h.getMemberAuth)
 }

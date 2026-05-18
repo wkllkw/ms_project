@@ -34,17 +34,16 @@
                         </template>
                     </a-tab-pane>
                     <a-tab-pane key="2">
-                        <span slot="tab">通知<span
-                                v-if="total && totalSum['notice']">({{totalSum['notice']}})</span></span>
-                        <template v-if="total && totalSum['notice']">
+                        <span slot="tab">任务通知<span
+                                v-if="taskNoticeTotal">({{taskNoticeTotal}})</span></span>
+                        <template v-if="taskNoticeList.length">
                             <a-list>
-                                <template v-for="item in list['notice']">
+                                <template v-for="item in taskNoticeList">
                                     <a-list-item :key="item.id" @click="noticeAction(item)">
                                         <a-list-item-meta :description="item.create_time">
                                              <span slot="title">
                                                  <p v-html="item.title"></p>
                                                  <p class="ant-list-item-meta-description" v-html="item.content"></p>
-
                                              </span>
                                             <a-avatar style="background-color: white" slot="avatar"
                                                       src="https://gw.alipayobjects.com/zos/rmsportal/ThXAXghbEsBCCSDihZxY.png"/>
@@ -53,55 +52,47 @@
                                 </template>
                             </a-list>
                             <div class="footer-action">
-                                <a class="item muted" @click="setRead('notice')">清空通知</a>
-                                <a class="item muted" @click="()=>{$router.push('/notify/notice').catch(()=>{})}">查看更多</a>
+                                <a class="item muted" @click="clearNotice('task')">清空任务通知</a>
+                                <a class="item muted" @click="()=>{$router.push('/notify/notice?tab=task').catch(()=>{})}">查看更多</a>
                             </div>
                         </template>
                         <template v-else>
                             <div class="notFound">
                                 <img src="../../../assets/image/notify/bell.svg" alt="not found">
-                                <div>你已查看所有通知</div>
+                                <div>暂无任务通知</div>
                             </div>
                         </template>
                     </a-tab-pane>
-                 <!--   <a-tab-pane key="3">
-                        <span slot="tab">待办<span
-                                v-if="task.total && task.total">({{task.total}})</span></span>
-                        <template v-if="task.total && task.total">
+                    <a-tab-pane key="3">
+                        <span slot="tab">系统消息<span
+                                v-if="systemNoticeTotal">({{systemNoticeTotal}})</span></span>
+                        <template v-if="systemNoticeList.length">
                             <a-list>
-                                <template v-for="item in task.list">
-                                    <a-list-item :key="item.id">
-                                        <a-list-item-meta>
-                                            <a-avatar slot="avatar"
-                                                      :src="item.executor.avatar"/>
-                                            <span slot="title">
-                                                    <p>
-                                                        {{item.name}}
-                                                         <a-tag style="position: absolute;right: 0" color="red"
-                                                                v-if="item.end_time">还剩{{showDiff(item.end_time,new Date())}}</a-tag>
-                                                         <a-tag style="position: absolute;right: 0" color="gold" v-else>已耗时{{showDiff(new Date(),item.create_time)}}</a-tag>
-                                                    </p>
+                                <template v-for="item in systemNoticeList">
+                                    <a-list-item :key="item.id" @click="noticeAction(item)">
+                                        <a-list-item-meta :description="item.create_time">
+                                             <span slot="title">
+                                                 <p v-html="item.title"></p>
+                                                 <p class="ant-list-item-meta-description" v-html="item.content"></p>
                                              </span>
-                                            <span slot="description">
-                                                    <span>来自项目{{item.projectInfo.name}}</span>
-                                                    <span v-if="item.end_time">，需在{{formatTime(item.end_time)}}前完成</span>
-                                             </span>
+                                            <a-avatar style="background-color: white" slot="avatar"
+                                                      src="https://gw.alipayobjects.com/zos/rmsportal/ThXAXghbEsBCCSDihZxY.png"/>
                                         </a-list-item-meta>
                                     </a-list-item>
                                 </template>
                             </a-list>
                             <div class="footer-action">
-                                <a class="item muted" @click="setRead('task')">清空待办</a>
-                                <a class="item muted">查看更多</a>
+                                <a class="item muted" @click="clearNotice('system')">清空系统消息</a>
+                                <a class="item muted" @click="()=>{$router.push('/notify/notice?tab=system').catch(()=>{})}">查看更多</a>
                             </div>
                         </template>
                         <template v-else>
                             <div class="notFound">
-                                <img src="../../../assets/image/notify/ticket.svg" alt="not found">
-                                <div>你已完成所有待办</div>
+                                <img src="../../../assets/image/notify/laba.svg" alt="not found">
+                                <div>暂无系统消息</div>
                             </div>
                         </template>
-                    </a-tab-pane>-->
+                    </a-tab-pane>
                 </a-tabs>
             </a-spin>
         </template>
@@ -144,11 +135,29 @@
             ...mapState({
                 socketAction: state => state.socketAction,
                 currentOrganization: state => state.currentOrganization,
-            })
+            }),
+            // 从原始 notice 列表中提取任务通知（action 以 'task:' 开头）
+            taskNoticeList() {
+                const raw = (this.list && this.list['notice']) || [];
+                return raw.filter(item => item.action && item.action.startsWith('task:'));
+            },
+            taskNoticeTotal() {
+                return this.taskNoticeList.length;
+            },
+            // 从原始 notice 列表中提取系统消息（非任务通知）
+            systemNoticeList() {
+                const raw = (this.list && this.list['notice']) || [];
+                return raw.filter(item => !item.action || !item.action.startsWith('task:'));
+            },
+            systemNoticeTotal() {
+                return this.systemNoticeList.length;
+            },
         },
         watch: {
             socketAction(val) {
                 if (val.action === 'notice') {
+                    this.init();
+                } else if (val.action && val.action.startsWith('task:')) {
                     this.init();
                 } else if (val.action === 'task' || val.action === 'events') {
                     this.init();
@@ -165,7 +174,6 @@
         methods: {
             init() {
                 this.fetchNotice();
-                // this.getTasks();
             },
             fetchNotice() {
                 let app = this;
@@ -186,6 +194,27 @@
                     case 'message':
                         this.totalSum.message = 0;
                         _clearAll();
+                }
+            },
+            clearNotice(type) {
+                if (type === 'task') {
+                    // 清空任务通知
+                    const taskItems = this.taskNoticeList;
+                    this.total -= taskItems.length;
+                    if (this.list && this.list['notice']) {
+                        this.list['notice'] = this.list['notice'].filter(
+                            item => !item.action || !item.action.startsWith('task:')
+                        );
+                    }
+                } else if (type === 'system') {
+                    // 清空系统消息
+                    const sysItems = this.systemNoticeList;
+                    this.total -= sysItems.length;
+                    if (this.list && this.list['notice']) {
+                        this.list['notice'] = this.list['notice'].filter(
+                            item => item.action && item.action.startsWith('task:')
+                        );
+                    }
                 }
             },
             showMore(key) {
@@ -214,9 +243,28 @@
             },
             noticeAction(item) {
                 this.showNotice = false;
-                // 标记为已读
                 setReadied(JSON.stringify([item.id]));
-                // 如果有有效action路径则跳转
+                if (item.action && item.action.startsWith('task:')) {
+                    let taskCode = '';
+                    let projectCode = '';
+                    try {
+                        const sendData = typeof item.send_data === 'string' ? JSON.parse(item.send_data) : item.send_data;
+                        taskCode = sendData.taskCode || '';
+                        projectCode = sendData.projectCode || '';
+                    } catch (e) {}
+                    if (taskCode && projectCode) {
+                        const routeUrl = '/project/space/task/' + projectCode + '/detail/' + taskCode;
+                        if (item.action === 'task:mention' || item.action === 'task:comment') {
+                            this.$router.push({path: routeUrl, query: {scrollTo: 'comment'}}).catch(() => {});
+                        } else {
+                            this.$router.push(routeUrl).catch(() => {});
+                        }
+                    } else {
+                        this.$router.push('/project/list/my').catch(() => {});
+                    }
+                    this.init();
+                    return;
+                }
                 if (item.action && item.action !== '' && item.action.startsWith('/')) {
                     this.$router.push(item.action).catch(() => {});
                 }
@@ -280,7 +328,6 @@
             }
 
             .ant-list-item:hover {
-                /*background: #e6f7ff;*/
                 cursor: pointer;
             }
 

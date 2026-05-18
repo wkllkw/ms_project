@@ -69,25 +69,7 @@
                                                 </a></li>
                                             </ul>
                                         </div>
-                                        <div class="ant-list-item">
-                                            <div class="ant-list-item-meta">
-                                                <div class="ant-list-item-meta-content">
-                                                    <h4 class="ant-list-item-meta-title"><a>钉钉账号</a></h4>
-                                                    <div class="ant-list-item-meta-description">
-                                                        <span>
-                                                            <span class="security-list-description">
-                                                                  <span v-if="userInfo.dingtalk_unionid">已绑定</span>
-                                                                <span v-else>未绑定钉钉账号</span>
-                                                            </span>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <ul class="ant-list-item-action">
-                                                <li v-if="userInfo.dingtalk_unionid" @click="unbindDingtalk"><a>解除绑定</a></li>
-                                                <li v-else @click="bindDingtalk"><a>绑定</a></li>
-                                            </ul>
-                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -258,8 +240,7 @@
     import {mapState} from 'vuex'
     import AccountSetting from "@/components/layout/account/setting"
     import {checkResponse} from "../../../assets/js/utils";
-    import {_bindMail, _bindMobile, _unbindDingtalk, editPassword, getCaptcha} from "../../../api/user";
-    import {dingTalkOauth} from "../../../api/oauth";
+    import {_bindMail, _bindMobile, editPassword, getCaptcha} from "../../../api/user";
 
     export default {
         name: "settingSecurity",
@@ -317,30 +298,6 @@
             },
             editMail() {
                 this.mailInfo.modalStatus = true;
-            },
-            bindDingtalk() {
-                let url = dingTalkOauth() + '?redirectPath=' + this.$route.fullPath + '&bindDingtalk=1';
-                location.href = url;
-            },
-            unbindDingtalk() {
-                let app = this;
-                this.$confirm({
-                    title: '确认解绑',
-                    content: `解除绑定后将无法使用该帐号进行登录`,
-                    okText: '确定',
-                    okType: 'danger',
-                    cancelText: `再想想`,
-                    onOk() {
-                        _unbindDingtalk().then((res) => {
-                            const result = checkResponse(res);
-                            if (!result) {
-                                return false;
-                            }
-                            app.$store.dispatch('SET_USER', res.data);
-                        });
-                        return Promise.resolve();
-                    }
-                });
             },
             handlePasswordSubmit() {
                 let app = this;

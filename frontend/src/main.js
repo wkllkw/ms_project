@@ -39,7 +39,7 @@ const silentNavigationErrors = new Set([
 ]);
 const originalErrorHandler = Vue.config.errorHandler;
 Vue.config.errorHandler = function (err, vm, info) {
-    if (err && silentNavigationErrors.has(err.name)) {
+    if (err && (silentNavigationErrors.has(err.name) || err._isRouter)) {
         return;
     }
     if (originalErrorHandler) {
@@ -56,6 +56,18 @@ window.addEventListener('unhandledrejection', function (event) {
     if (err && silentNavigationErrors.has(err.name)) {
         event.preventDefault();
         event.stopImmediatePropagation();
+    }
+}, true);
+
+// 全局捕获同步 error 事件，静默路由导航中断错误
+// 当导航守卫重定向 (next('/xxx')) 时，Vue Router 内部会抛出同步的
+// NavigationRedirected 错误，此 handler 防止其被 webpack-dev-server overlay 捕获
+window.addEventListener('error', function (event) {
+    const err = event.error;
+    if (err && (silentNavigationErrors.has(err.name) || err._isRouter)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return false;
     }
 }, true);
 Vue.use(Antd);

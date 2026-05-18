@@ -34,6 +34,8 @@ func (r RegisterReq) Verify() error {
 type LoginReq struct {
 	Account  string `json:"account" form:"account"`
 	Password string `json:"password" form:"password"`
+	Mobile   string `json:"mobile" form:"mobile"`
+	Captcha  string `json:"captcha" form:"captcha"`
 }
 
 type LoginRsp struct {

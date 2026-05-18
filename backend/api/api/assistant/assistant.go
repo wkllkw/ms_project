@@ -1226,7 +1226,7 @@ func (h *HandlerAssistant) chat(c *gin.Context) {
 	// Function calling 循环
 	for round := 0; round < maxToolRounds; round++ {
 		bodyBytes, _ := json.Marshal(body)
-		apiURL := fmt.Sprintf("%s/ekupzk/v1/chat/completions", openclawBaseURL)
+		apiURL := fmt.Sprintf("%s/v1/chat/completions", openclawBaseURL)
 
 		httpReq, _ := http.NewRequest("POST", apiURL, bytes.NewReader(bodyBytes))
 		httpReq.Header.Set("Content-Type", "application/json")
@@ -1243,6 +1243,7 @@ func (h *HandlerAssistant) chat(c *gin.Context) {
 
 		var result map[string]interface{}
 		if err := json.Unmarshal(respBody, &result); err != nil {
+			log.Printf("[assistant] JSON unmarshal error, body preview: %.200s", string(respBody))
 			c.JSON(http.StatusOK, gin.H{"code": 500, "msg": "AI 响应解析失败"})
 			return
 		}

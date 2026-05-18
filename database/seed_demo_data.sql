@@ -634,9 +634,9 @@ ALTER TABLE `ms_project_events_member` AUTO_INCREMENT = 28;
 
 INSERT INTO `ms_notify` (`id`, `member_code`, `title`, `content`, `type`, `is_read`, `create_time`, `action`, `send_data`) VALUES
 -- 任务通知 (type=1)
-(1,  1004, '任务已指派给你', '王建国 将「API网关接入」分配给了你', 1, 0, 1775600000000, 'task:assign', '{"taskCode":"e5","fromUser":1006}'),
-(2,  1005, '任务已指派给你', '张明远 将「数据看板页面开发」分配给了你', 1, 0, 1775700000000, 'task:assign', '{"taskCode":"e10","fromUser":1004}'),
-(3,  1006, '任务有新评论', '张明远 在「权限管理系统重构」中回复了你', 1, 1, 1775800000000, 'task:comment', '{"taskCode":"e4","fromUser":1004}'),
+(1,  1004, '任务已指派给你', '王建国 将「API网关接入」分配给了你', 1, 0, 1775600000000, 'task:assign', '{"taskCode":"e5","fromUser":1006,"projectCode":"e0"}'),
+(2,  1005, '任务已指派给你', '张明远 将「数据看板页面开发」分配给了你', 1, 0, 1775700000000, 'task:assign', '{"taskCode":"e10","fromUser":1004,"projectCode":"e0"}'),
+(3,  1006, '任务有新评论', '张明远 在「权限管理系统重构」中回复了你', 1, 1, 1775800000000, 'task:comment', '{"taskCode":"e4","fromUser":1004,"projectCode":"e0"}'),
 (4,  1004, '任务到期提醒', '「企业管理系统」项目进度已更新为35.5%', 1, 0, 1775900000000, 'task:deadline', '{"projectCode":"e0"}'),
 (5,  1003, '任务已完成', '李思涵 完成了「登录流程优化」任务', 1, 1, 1776000000000, 'task:done', '{"taskCode":"e25"}'),
 (6,  1008, '任务已指派给你', '张明远 将「部门管理CRUD」分配给了你进行测试', 1, 0, 1776100000000, 'task:assign', '{"taskCode":"e8","fromUser":1004}'),
@@ -734,9 +734,10 @@ ALTER TABLE `ms_project_version_log` AUTO_INCREMENT = 11;
 INSERT INTO `ms_project_auth` (`id`, `title`, `desc`, `status`, `is_default`, `create_at`) VALUES
 (1, '管理员', '拥有项目所有权限', 1, 0, 1772524800000),
 (2, '编辑者', '可以编辑任务和项目内容', 1, 1, 1772524800000),
-(3, '访客', '只能查看项目内容，不能编辑', 1, 0, 1772524800000);
+(3, '访客', '只能查看项目内容，不能编辑', 1, 0, 1772524800000),
+(4, '组织管理员', '拥有组织管理权限，可管理部门和成员', 1, 0, 1772524800000);
 
-ALTER TABLE `ms_project_auth` AUTO_INCREMENT = 4;
+ALTER TABLE `ms_project_auth` AUTO_INCREMENT = 5;
 
 -- ============================================================
 -- 24. 项目权限节点
@@ -759,12 +760,26 @@ INSERT INTO `ms_project_auth_node` (`id`, `auth_id`, `node`) VALUES
 (12, 2, 'file:upload'),
 -- 访客权限
 (13, 3, 'task:view'),
-(14, 3, 'file:view');
+(14, 3, 'file:view'),
+-- 组织管理员权限
+(15, 4, 'organization.setting'),
+(16, 4, 'organization.member'),
+(17, 4, 'organization.department'),
+(18, 4, 'project.manage');
 
-ALTER TABLE `ms_project_auth_node` AUTO_INCREMENT = 15;
+ALTER TABLE `ms_project_auth_node` AUTO_INCREMENT = 19;
 
 -- ============================================================
--- 25. 邀请链接
+-- 25. 组织角色分配
+-- ============================================================
+
+INSERT INTO `ms_organization_auth` (`id`, `organization_code`, `member_code`, `auth_id`, `create_time`) VALUES
+(1, 9, 1000, 4, 1775000000000);
+
+ALTER TABLE `ms_organization_auth` AUTO_INCREMENT = 2;
+
+-- ============================================================
+-- 26. 邀请链接
 -- ============================================================
 
 INSERT INTO `ms_invite_link` (`id`, `project_id`, `invite_code`, `expired_at`, `create_by`, `create_time`) VALUES
@@ -775,7 +790,7 @@ INSERT INTO `ms_invite_link` (`id`, `project_id`, `invite_code`, `expired_at`, `
 ALTER TABLE `ms_invite_link` AUTO_INCREMENT = 4;
 
 -- ============================================================
--- 26. 文件记录
+-- 27. 文件记录
 -- ============================================================
 
 INSERT INTO `ms_file` (`id`, `project_code`, `member_code`, `title`, `file_name`, `file_type`, `file_size`, `file_url`, `file_path`, `description`, `deleted`, `create_time`, `update_time`) VALUES

@@ -39,6 +39,9 @@ func baseNodes() []nodeItem {
 		{Node: "project.delete", Title: "项目删除"},
 		{Node: "project.member", Title: "项目成员管理"},
 		{Node: "organization.manage", Title: "组织管理"},
+		{Node: "organization.setting", Title: "组织设置"},
+		{Node: "organization.member", Title: "组织成员管理"},
+		{Node: "organization.department", Title: "部门管理"},
 		{Node: "calendar", Title: "日程"},
 		{Node: "notify.notice", Title: "通知列表"},
 		{Node: "notify.system", Title: "系统消息"},
@@ -76,7 +79,16 @@ func (h *HandlerNode) list(c *gin.Context) {
 				{Node: "notify.notice", Title: "通知列表", PNode: "project"},
 				{Node: "notify.system", Title: "系统消息", PNode: "project"},
 				{Node: "members.index", Title: "成员列表", PNode: "project"},
-				{Node: "project.manage", Title: "组织管理", PNode: "project"},
+			},
+		},
+		{
+			Node:  "organization",
+			Title: "组织权限",
+			Children: []*nodeItem{
+				{Node: "organization.setting", Title: "组织设置", PNode: "organization"},
+				{Node: "organization.member", Title: "组织成员管理", PNode: "organization"},
+				{Node: "organization.department", Title: "部门管理", PNode: "organization"},
+				{Node: "organization.manage", Title: "组织管理(旧)", PNode: "organization"},
 			},
 		},
 		{

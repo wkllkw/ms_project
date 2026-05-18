@@ -48,14 +48,14 @@ type defaultMenuDef struct {
 func defaultMenuDefs() []defaultMenuDef {
 	return []defaultMenuDef{
 		{PreferredID: 1, Title: "工作台", Icon: "home", Url: "home", FilePath: "home/index", Node: "home", Sort: 1, Status: 1, ShowSlider: 1},
-		{PreferredID: 10, Title: "项目", Icon: "project", Url: "project/list", FilePath: "project/list/index", Params: "my", Node: "project", Sort: 2, Status: 1, ShowSlider: 1},
+		{PreferredID: 10, Title: "项目", Icon: "project", Node: "project", Sort: 2, Status: 1, ShowSlider: 1},
 		{PreferredID: 11, ParentNode: "project", Title: "项目列表", Icon: "project", Url: "project/list", FilePath: "project/list/index", Params: "my", Node: "project.list", Sort: 1, Status: 1, ShowSlider: 1},
 		{PreferredID: 12, ParentNode: "project", Title: "项目模板", Icon: "appstore", Url: "project/template", FilePath: "project/template/index", Node: "project.template", Sort: 2, Status: 1, ShowSlider: 1},
 		{PreferredID: 13, ParentNode: "project", Title: "数据分析", Icon: "bar-chart", Url: "project/analysis", FilePath: "project/analysis/index", Node: "project.analysis", Sort: 3, Status: 1, ShowSlider: 1},
 		{PreferredID: 14, ParentNode: "project", Title: "归档项目", Icon: "container", Url: "project/list", FilePath: "project/list/index", Node: "project.archive", Sort: 4, Status: 0, Values: "archive", ShowSlider: 1},
 		{PreferredID: 15, ParentNode: "project", Title: "回收站", Icon: "delete", Url: "project/list", FilePath: "project/list/index", Node: "project.recycle", Sort: 5, Status: 0, Values: "deleted", ShowSlider: 1},
-		{PreferredID: 20, Title: "通知", Icon: "bell", Url: "notify/notice", FilePath: "notify/notice", Node: "notify", Sort: 4, Status: 1, ShowSlider: 1},
-		{PreferredID: 21, ParentNode: "notify", Title: "通知列表", Icon: "bell", Url: "notify/notice", FilePath: "notify/notice", Node: "notify.notice", Sort: 1, Status: 1, ShowSlider: 1},
+		{PreferredID: 20, Title: "通知", Icon: "bell", Node: "notify", Sort: 4, Status: 1, ShowSlider: 1},
+		{PreferredID: 21, ParentNode: "notify", Title: "任务通知", Icon: "bell", Url: "notify/notice", FilePath: "notify/notice", Node: "notify.notice", Sort: 1, Status: 1, ShowSlider: 1},
 		{PreferredID: 22, ParentNode: "notify", Title: "系统消息", Icon: "notification", Url: "notify/system", FilePath: "notify/system", Node: "notify.system", Sort: 2, Status: 1, ShowSlider: 1},
 		{PreferredID: 25, Title: "日程", Icon: "calendar", Url: "calendar", FilePath: "common/calendar", Node: "calendar", Sort: 3, Status: 1, ShowSlider: 1},
 		{PreferredID: 30, Title: "团队", Icon: "team", Url: "members", FilePath: "members/index", Node: "members", Sort: 5, Status: 1, ShowSlider: 1},

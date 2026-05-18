@@ -29,7 +29,7 @@
                         </div>
                     </div>
                 </a-layout-header>
-                <a-layout style="padding-top: 56px;">
+                <a-layout style="padding-top: 52px;">
                     <a-sider
                             mode="inline"
                             breakpoint="md"
@@ -115,7 +115,7 @@
                     </a-sider>
                     <a-layout
                             class="main-content"
-                            :style="collapsed ? { paddingLeft: '72px'} : { paddingLeft: '240px'}">
+                            :style="collapsed ? { paddingLeft: '64px'} : { paddingLeft: '220px'}">
                         <a-layout-content>
                             <transition name="router-fade" mode="out-in">
                                 <a-spin :spinning="pageLoading">

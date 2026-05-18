@@ -1,698 +1,404 @@
 // ============================================================
-// MS Project - 暗色模式 (Dark Mode) - 轻量化柔和风格
-// 深灰替代纯黑，柔和对比度，移除全量 * 选择器 transition
+// FlowHub Modern Dark Mode v2.0
+// 配色参考：GitHub Dark × Vercel Dark
 // ============================================================
 
 #layout.layout-dark {
-  // ==================== 全局背景与文字 ====================
+  // ========== 全局背景 ==========
   .ant-layout {
-    background: #1e1e1e;
+    background: #0d1117;
   }
 
   .ant-layout-content {
-    background: #1e1e1e;
+    background: #0d1117;
   }
 
   body {
-    background-color: #1e1e1e;
-    color: #e0e0e0;
+    background-color: #0d1117;
+    color: #e6edf3;
   }
 
-  // 滚动条
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.18);
-    }
+    &:hover { background: rgba(255, 255, 255, 0.18); }
   }
 
-  // ==================== 文字颜色类 ====================
-  .muted {
-    color: rgba(255, 255, 255, 0.45);
-  }
-
-  .text-grey {
-    color: rgba(255, 255, 255, 0.45);
-  }
-
-  .text-default {
-    color: #e0e0e0;
-  }
+  // ========== 文字 ==========
+  .muted { color: #8b949e; }
+  .text-grey { color: #8b949e; }
+  .text-default { color: #e6edf3; }
 
   .empty-state-wrapper {
-    .empty-icon {
-      color: #555;
-    }
-
-    .empty-text {
-      color: rgba(255, 255, 255, 0.25);
-    }
+    .empty-icon { color: #6e7681; }
+    .empty-text { color: #6e7681; }
   }
 
-  // ==================== 卡片 ====================
+  // ========== 卡片 ==========
   .ant-card {
-    background: #252525;
-    border-color: #333;
+    background: #1c2129;
+    border-color: #30363d;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-    color: #e0e0e0;
+    color: #e6edf3;
 
     &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-      border-color: rgba(58, 130, 248, 0.3);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      border-color: rgba(79, 140, 255, 0.3);
     }
 
     &-head {
-      border-bottom-color: #333;
-
-      &-title {
-        color: #e0e0e0;
-      }
+      border-bottom-color: #30363d;
+      &-title { color: #e6edf3; }
     }
 
-    &-body {
-      color: rgba(255, 255, 255, 0.65);
-    }
-
+    &-body { color: #8b949e; }
     &-small {
-      background: #252525;
-      border-color: #333;
+      background: #1c2129;
+      border-color: #30363d;
     }
   }
 
-  // ==================== 按钮 ====================
+  // ========== 按钮 ==========
   .ant-btn {
     &-default {
-      background: #2a2a2a;
-      border-color: #404040;
-      color: #e0e0e0;
-
+      background: #21262d;
+      border-color: #30363d;
+      color: #e6edf3;
       &:hover {
-        border-color: #3a82f8;
-        color: #3a82f8;
-        background: #2a2a2a;
-        box-shadow: 0 2px 6px rgba(58, 130, 248, 0.15);
+        border-color: #4f8cff;
+        color: #4f8cff;
+        background: #21262d;
+        box-shadow: 0 2px 6px rgba(79, 140, 255, 0.15);
       }
     }
-
     &-dashed {
-      border-color: #404040;
-      color: rgba(255, 255, 255, 0.65);
-      background: #2a2a2a;
+      border-color: #30363d;
+      color: #8b949e;
+      background: #21262d;
     }
-
     &-text {
-      color: rgba(255, 255, 255, 0.65);
-
+      color: #8b949e;
       &:hover {
-        color: #3a82f8;
-        background: rgba(58, 130, 248, 0.08);
+        color: #4f8cff;
+        background: rgba(79, 140, 255, 0.08);
       }
     }
   }
 
   .disabled-btn {
-    background-color: #2a2a2a !important;
-    border-color: #404040 !important;
-    color: rgba(255, 255, 255, 0.25) !important;
+    background-color: #21262d !important;
+    border-color: #30363d !important;
+    color: #6e7681 !important;
   }
 
-  // ==================== 输入框 ====================
+  // ========== 输入框 ==========
   .ant-input,
   .ant-input-affix-wrapper,
   .ant-select-selection,
   .ant-picker {
-    background: #2a2a2a !important;
-    border-color: #404040 !important;
-    color: #e0e0e0 !important;
+    background: #21262d !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
 
-    &::placeholder {
-      color: #666;
-    }
-
-    &:hover {
-      border-color: #555 !important;
-    }
-
+    &::placeholder { color: #6e7681; }
+    &:hover { border-color: #3a3f47 !important; }
     &:focus {
-      border-color: #3a82f8 !important;
-      box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.12) !important;
+      border-color: #4f8cff !important;
+      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.08) !important;
     }
   }
 
   .ant-select-dropdown,
   .ant-picker-dropdown {
-    background: #2a2a2a;
-    border: 1px solid #404040;
+    background: #21262d;
+    border: 1px solid #30363d;
 
     .ant-select-item-option-active,
     .ant-select-item-option-selected {
-      background: #333 !important;
+      background: #30363d !important;
     }
   }
 
-  // ==================== 表单 ====================
-  .ant-form-item-label > label {
-    color: #e0e0e0;
-  }
+  // ========== 表单 ==========
+  .ant-form-item-label > label { color: #e6edf3; }
 
-  // ==================== 表格 ====================
+  // ========== 表格 ==========
   .ant-table {
-    background: #252525;
-    color: rgba(255, 255, 255, 0.65);
-    border: 1px solid #333;
+    background: transparent;
+    color: #8b949e;
+    border: none;
 
     &-thead > tr > th {
-      background: #2a2a2a;
-      color: #e0e0e0;
-      border-bottom-color: #333;
-
-      &::before {
-        background-color: #333 !important;
-      }
+      background: #161b22;
+      color: #8b949e;
+      border-bottom-color: #30363d;
+      &::before { background-color: #30363d !important; }
     }
 
     &-tbody > tr {
-      &:hover > td {
-        background: #2a2a2a !important;
-      }
-
+      &:hover > td { background: #161b22 !important; }
       > td {
-        border-bottom-color: #333;
-        color: rgba(255, 255, 255, 0.65);
+        border-bottom-color: #21262d;
+        color: #8b949e;
       }
     }
 
-    &-placeholder {
-      .ant-table-cell {
-        border-bottom-color: #333;
-      }
-    }
-
-    .ant-empty-description {
-      color: rgba(255, 255, 255, 0.25);
-    }
+    &-placeholder .ant-table-cell { border-bottom-color: #30363d; }
+    .ant-empty-description { color: #6e7681; }
   }
 
-  // ==================== 模态框 ====================
+  // ========== 模态框 ==========
   .ant-modal {
-    &-wrap {
-      .ant-modal-mask {
-        background: rgba(0, 0, 0, 0.6);
-      }
-    }
-
+    &-wrap .ant-modal-mask { background: rgba(0, 0, 0, 0.6); }
     &-content {
-      background: #252525;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      background: #1c2129;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
-
     &-header {
-      background: #252525;
-      border-bottom-color: #333;
-
-      .ant-modal-title {
-        color: #e0e0e0;
-      }
+      background: #1c2129;
+      border-bottom-color: #30363d;
+      .ant-modal-title { color: #e6edf3; }
     }
-
     &-close-x {
-      color: rgba(255, 255, 255, 0.45);
-
-      &:hover {
-        color: #e0e0e0;
-      }
+      color: #8b949e;
+      &:hover { color: #e6edf3; }
     }
-
     &-body {
       padding: 20px;
-      color: rgba(255, 255, 255, 0.65);
-      background: #252525;
+      color: #8b949e;
+      background: #1c2129;
     }
-
     &-footer {
-      border-top-color: #333;
-      background: #252525;
+      border-top-color: #30363d;
+      background: #1c2129;
     }
   }
 
-  .task-detail-modal {
-    .ant-modal-content {
-      background: #252525;
-    }
+  .task-detail-modal .ant-modal-content { background: #1c2129; }
+  .scroll-modal .modal-footer {
+    background: #1c2129;
+    border-top: 1px solid #30363d;
   }
 
-  .scroll-modal {
-    .modal-footer {
-      background: #252525;
-      border-top: 1px solid #333;
-    }
-  }
-
-  // ==================== 抽屉 ====================
+  // ========== 抽屉 ==========
   .ant-drawer {
-    &-content {
-      background: #252525;
-      color: #e0e0e0;
-    }
-
+    &-content { background: #1c2129; color: #e6edf3; }
     &-header {
-      background: #252525;
-      border-bottom-color: #333;
-
-      .ant-drawer-title {
-        color: #e0e0e0;
-      }
-
-      .ant-drawer-close {
-        color: rgba(255, 255, 255, 0.45);
-
-        &:hover {
-          color: #e0e0e0;
-        }
-      }
+      background: #1c2129;
+      border-bottom-color: #30363d;
+      .ant-drawer-title { color: #e6edf3; }
+      .ant-drawer-close { color: #8b949e; &:hover { color: #e6edf3; } }
     }
-
-    &-body {
-      color: rgba(255, 255, 255, 0.65);
-    }
+    &-body { color: #8b949e; }
   }
 
-  // ==================== 下拉菜单 ====================
+  // ========== 下拉菜单 ==========
   .ant-dropdown-menu {
-    background: #2a2a2a;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border: 1px solid #404040;
-    padding: 4px;
+    background: #21262d;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border: 1px solid #30363d;
+    padding: 6px;
 
     &-item {
-      color: rgba(255, 255, 255, 0.65);
-      border-radius: 4px;
-      margin-bottom: 1px;
-      transition: background-color 0.1s;
-
-      &:hover {
-        background: #333;
-        color: #e0e0e0;
-      }
-
-      &-divider {
-        background: #404040;
-      }
+      color: #8b949e;
+      border-radius: 6px;
+      &:hover { background: #30363d; color: #e6edf3; }
+      &-divider { background: #30363d; }
     }
-
-    &-submenu-title > .ant-dropdown-menu-submenu-arrow {
-      color: rgba(255, 255, 255, 0.35);
-    }
+    &-submenu-title > .ant-dropdown-menu-submenu-arrow { color: #6e7681; }
   }
 
-  .ant-dropdown {
-    .ant-btn-link {
-      color: rgba(255, 255, 255, 0.65);
-    }
-  }
+  .ant-dropdown .ant-btn-link { color: #8b949e; }
 
-  // ==================== 标签 ====================
+  // ========== 标签 ==========
   .ant-tag {
-    border-color: #404040;
-    background: #333;
-    color: rgba(255, 255, 255, 0.65);
-    transition: opacity 0.15s ease;
-
-    &:hover {
-      opacity: 0.85;
-    }
+    border-color: #30363d;
+    background: #30363d;
+    color: #8b949e;
+    &:hover { opacity: 0.85; }
   }
 
-  // ==================== 提示 ====================
+  // ========== 提示 ==========
   .ant-tooltip-inner {
-    background: rgba(40, 40, 40, 0.95);
-    color: #e0e0e0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: rgba(33, 38, 45, 0.95);
+    color: #e6edf3;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
 
   .ant-popover-inner {
-    background: #2a2a2a;
-    color: #e0e0e0;
-    border: 1px solid #404040;
+    background: #21262d;
+    color: #e6edf3;
+    border: 1px solid #30363d;
   }
 
-  // ==================== 标签页 ====================
+  // ========== 标签页 ==========
   .ant-tabs {
     &-tab {
-      color: rgba(255, 255, 255, 0.55);
-
-      &:hover {
-        color: #3a82f8;
-      }
-
-      &-active {
-        color: #3a82f8;
-      }
+      color: #8b949e;
+      &:hover { color: #4f8cff; }
+      &-active { color: #4f8cff; }
     }
-
-    &-ink-bar {
-      background: #3a82f8;
-    }
-
-    &-nav {
-      &::before {
-        border-bottom-color: #333;
-      }
-    }
+    &-ink-bar { background: #4f8cff; }
+    &-nav::before { border-bottom-color: #30363d; }
   }
+  .ant-tabs-tabpane { color: #8b949e; }
 
-  .ant-tabs-tabpane {
-    color: rgba(255, 255, 255, 0.65);
-  }
-
-  // ==================== 折叠面板 ====================
+  // ========== 折叠面板 ==========
   .ant-collapse {
-    background: #252525;
-    border-color: #333;
-
-    &-item {
-      border-color: #333;
-    }
-
-    &-header {
-      background: #252525;
-      color: #e0e0e0;
-    }
-
+    background: #1c2129;
+    border-color: #30363d;
+    &-item { border-color: #30363d; }
+    &-header { background: #1c2129; color: #e6edf3; }
     &-content {
-      background: #252525;
-      color: rgba(255, 255, 255, 0.65);
-      border-top-color: #333;
+      background: #1c2129;
+      color: #8b949e;
+      border-top-color: #30363d;
     }
   }
 
-  // ==================== 进度条 / 开关 ====================
-  .ant-progress-text {
-    color: rgba(255, 255, 255, 0.65);
-  }
+  // ========== 开关/进度条 ==========
+  .ant-progress-text { color: #8b949e; }
+  .ant-switch { background: #3a3f47; &:checked { background: #4f8cff; } }
+  .ant-slider-track { background: #4f8cff; }
+  .ant-slider-rail { background: #30363d; }
 
-  .ant-switch {
-    background: #555;
-
-    &:checked {
-      background: #3a82f8;
-    }
-  }
-
-  .ant-slider-track {
-    background: #3a82f8;
-  }
-
-  .ant-slider-rail {
-    background: #404040;
-  }
-
-  // ==================== 时间线 / 树 ====================
-  .ant-timeline-item-content {
-    color: rgba(255, 255, 255, 0.65);
-  }
-
-  .ant-timeline-item-tail {
-    border-left-color: #404040;
-  }
-
+  // ========== 时间线/树 ==========
+  .ant-timeline-item-content { color: #8b949e; }
+  .ant-timeline-item-tail { border-left-color: #30363d; }
   .ant-tree {
     background: transparent;
-    color: rgba(255, 255, 255, 0.65);
-
-    .ant-tree-node-content-wrapper:hover {
-      background: #333;
-    }
+    color: #8b949e;
+    .ant-tree-node-content-wrapper:hover { background: #21262d; }
   }
 
-  // ==================== 日历 ====================
+  // ========== 日历 ==========
   .ant-calendar {
-    background: #252525;
-    border-color: #333;
-
-    &-picker-container {
-      background: #252525;
-    }
-
-    &-header {
-      border-bottom-color: #333;
-      color: #e0e0e0;
-    }
-
+    background: #1c2129;
+    border-color: #30363d;
+    &-picker-container { background: #1c2129; }
+    &-header { border-bottom-color: #30363d; color: #e6edf3; }
     &-table {
-      th {
-        color: rgba(255, 255, 255, 0.45);
-      }
-
-      td {
-        color: rgba(255, 255, 255, 0.65);
-      }
+      th { color: #6e7681; }
+      td { color: #8b949e; }
     }
-
-    &-selected-day {
-      .ant-calendar-date {
-        background: #3a82f8;
-      }
-    }
-
-    &-date:hover {
-      border-color: #3a82f8;
-    }
-
-    &-today .ant-calendar-date {
-      border-color: #3a82f8;
-      color: #3a82f8;
-    }
+    &-selected-day .ant-calendar-date { background: #4f8cff; }
+    &-date:hover { border-color: #4f8cff; }
+    &-today .ant-calendar-date { border-color: #4f8cff; color: #4f8cff; }
   }
 
   .ant-picker {
-    &-panel {
-      background: #2a2a2a;
-      border-color: #404040;
-    }
-
-    &-cell-selected .ant-picker-cell-inner {
-      background: #3a82f8;
-    }
-
-    &-focused {
-      border-color: #3a82f8;
-    }
-
-    &-header {
-      button {
-        color: rgba(255, 255, 255, 0.65);
-      }
-    }
+    &-panel { background: #21262d; border-color: #30363d; }
+    &-cell-selected .ant-picker-cell-inner { background: #4f8cff; }
+    &-focused { border-color: #4f8cff; }
+    &-header button { color: #8b949e; }
   }
 
-  // ==================== 上传 ====================
+  // ========== 上传 ==========
   .ant-upload-drag {
-    background: #2a2a2a;
-    border-color: #404040;
-
-    &:hover {
-      border-color: #3a82f8;
-    }
+    background: #21262d;
+    border-color: #30363d;
+    &:hover { border-color: #4f8cff; }
+  }
+  .ant-upload-list .ant-upload-list-item {
+    background: #21262d;
+    border-color: #30363d;
+    &:hover { background: #30363d; }
+    .anticon { color: #6e7681; }
   }
 
-  .ant-upload-list {
-    .ant-upload-list-item {
-      background: #2a2a2a;
-      border-color: #333;
-
-      &:hover {
-        background: #333;
-      }
-
-      .anticon {
-        color: rgba(255, 255, 255, 0.35);
-      }
-    }
-  }
-
-  // ==================== 列表 ====================
+  // ========== 列表 ==========
   .ant-list {
     .ant-list-item {
-      border-bottom-color: #333;
-
-      &:hover {
-        background: #2a2a2a;
-      }
-
-      .ant-list-item-meta-title {
-        color: #e0e0e0;
-      }
-
-      .ant-list-item-meta-description {
-        color: rgba(255, 255, 255, 0.4);
-      }
+      border-bottom-color: #30363d;
+      &:hover { background: #21262d; }
+      .ant-list-item-meta-title { color: #e6edf3; }
+      .ant-list-item-meta-description { color: #6e7681; }
     }
-
-    &-empty-text {
-      color: rgba(255, 255, 255, 0.25);
-    }
+    &-empty-text { color: #6e7681; }
   }
 
-  .ant-descriptions-item-label {
-    color: rgba(255, 255, 255, 0.5);
-  }
+  .ant-descriptions-item-label { color: #6e7681; }
+  .ant-statistic-content-value { color: #e6edf3; }
+  .ant-statistic-title { color: #6e7681; }
 
-  .ant-statistic-content-value {
-    color: #e0e0e0;
-  }
-
-  .ant-statistic-title {
-    color: rgba(255, 255, 255, 0.4);
-  }
-
-  // ==================== 警告提示 ====================
+  // ========== 警告 ==========
   .alert-white {
-    background: #2a2a2a;
-    border-color: #404040;
-    color: rgba(255, 255, 255, 0.65);
+    background: #21262d;
+    border-color: #30363d;
+    color: #8b949e;
   }
-
-  .alert-error {
-    background: #2a1215;
-    border-color: #58181c;
-  }
-
-  .ant-alert-message {
-    color: #e0e0e0;
-  }
-
-  .ant-alert-with-description {
-    background: #2a2a2a;
-    border-color: #404040;
-  }
-
-  .ant-result-title {
-    color: #e0e0e0;
-  }
-
-  .ant-result-subtitle {
-    color: rgba(255, 255, 255, 0.4);
-  }
-
+  .alert-error { background: #2a1215; border-color: #58181c; }
+  .ant-alert-message { color: #e6edf3; }
+  .ant-alert-with-description { background: #21262d; border-color: #30363d; }
+  .ant-result-title { color: #e6edf3; }
+  .ant-result-subtitle { color: #6e7681; }
   .ant-message-notice-content {
-    background: #2a2a2a;
-    color: #e0e0e0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: #21262d;
+    color: #e6edf3;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
-
   .ant-notification-notice {
-    background: #2a2a2a;
-    border-color: #404040;
-    color: #e0e0e0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: #21262d;
+    border-color: #30363d;
+    color: #e6edf3;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
 
-  // ==================== 面包屑 ====================
+  // ========== 面包屑 ==========
   .ant-breadcrumb {
     span {
-      color: rgba(255, 255, 255, 0.4);
-
-      a {
-        color: rgba(255, 255, 255, 0.55);
-
-        &:hover {
-          color: #3a82f8;
-        }
-      }
-
-      &.ant-breadcrumb-separator {
-        color: rgba(255, 255, 255, 0.2);
-      }
+      color: #6e7681;
+      a { color: #8b949e; &:hover { color: #4f8cff; } }
+      &.ant-breadcrumb-separator { color: #3a3f47; }
     }
   }
 
-  // ==================== 项目导航栏 ====================
+  // ========== 项目导航 ==========
   .project-navigation {
-    background-color: #252525;
-    border-bottom-color: #333;
+    background-color: #1c2129;
+    border-bottom-color: #30363d;
   }
-
-  .project-navigation .ivu-breadcrumb-item-separator {
-    color: rgba(255, 255, 255, 0.3);
-  }
-
+  .project-navigation .ivu-breadcrumb-item-separator { color: #3a3f47; }
   .project-navigation .nav-underscore > li > a {
-    color: rgba(255, 255, 255, 0.55);
-
-    &:hover {
-      color: #3a82f8;
-    }
+    color: #8b949e;
+    &:hover { color: #4f8cff; }
   }
+  .simple .project-navigation { background: #1c2129; }
 
-  .simple {
-    .project-navigation {
-      background: #252525;
-    }
-  }
+  .maint-content .ant-layout-content { border-top-color: #161b22; }
+  .main-content { background: #0d1117; }
+  .ant-dropdown-menu-item { color: #8b949e; }
+  .field-right-menu .menu-desc { color: #6e7681; }
 
-  .maint-content .ant-layout-content {
-    border-top-color: #1a1a1a;
-  }
-
-  .main-content {
-    background: #1e1e1e;
-  }
-
-  .ant-dropdown-menu-item {
-    color: rgba(255, 255, 255, 0.55);
-  }
-
-  .field-right-menu {
-    .menu-desc {
-      color: rgba(255, 255, 255, 0.25);
-    }
-  }
-
-  // ==================== 成员菜单 ====================
+  // ========== 成员菜单 ==========
   .member-menu {
-    background: #2a2a2a;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-    border: 1px solid #404040;
-    color: rgba(255, 255, 255, 0.65);
+    background: #21262d;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    border: 1px solid #30363d;
+    color: #8b949e;
 
     .search-content .ant-input {
-      background: #2a2a2a;
-      color: rgba(255, 255, 255, 0.65);
-      border-color: #404040;
+      background: #21262d;
+      color: #8b949e;
+      border-color: #30363d;
     }
-
-    .member-list .list-group .title {
-      color: rgba(255, 255, 255, 0.4);
-    }
-
+    .member-list .list-group .title { color: #6e7681; }
     .member-list .member-list-item {
-      border-bottom-color: #333;
-
-      &:hover {
-        background: #333;
-      }
+      border-bottom-color: #30363d;
+      &:hover { background: #30363d; }
     }
-
-    .footer {
-      border-top-color: #333;
-    }
+    .footer { border-top-color: #30363d; }
   }
 
-  // ==================== 头像上传 ====================
-  .avatar-uploader .ant-upload-select-picture-card i {
-    color: #777;
-  }
+  // ========== 头像上传 ==========
+  .avatar-uploader .ant-upload-select-picture-card i { color: #6e7681; }
+  .avatar-uploader .ant-upload-select-picture-card .ant-upload-text { color: #8b949e; }
 
-  .avatar-uploader .ant-upload-select-picture-card .ant-upload-text {
-    color: #999;
-  }
-
-  // ==================== 头部 ====================
+  // ========== Header 毛玻璃(暗) ==========
   .ant-layout-header {
-    background: #1a1a2e !important;
-    border-bottom-color: #1a1a1a;
+    background: rgba(22, 27, 34, 0.82) !important;
+    backdrop-filter: saturate(180%) blur(10px);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+    border-bottom-color: #21262d;
 
     ul {
       background: transparent;
@@ -701,303 +407,186 @@
   }
 
   .logo {
-    background: #1a1a2e;
-    border-bottom: 1px solid #1a1a2e;
-
+    background: transparent;
+    border-bottom: 1px solid #21262d;
     .title {
-      color: #e0e0e0 !important;
-
-      .version {
-        color: rgba(255, 255, 255, 0.3) !important;
-      }
+      color: #e6edf3 !important;
+      .version { color: #6e7681 !important; }
     }
   }
 
   .right-menu {
-    color: rgba(255, 255, 255, 0.75);
-
+    color: #8b949e;
     .action {
-      .anticon {
-        color: rgba(255, 255, 255, 0.65);
-      }
-
+      .anticon { color: #8b949e; }
       &:hover {
         background: rgba(255, 255, 255, 0.06);
+        .anticon { color: #e6edf3; }
       }
     }
   }
 
-  // ==================== 分页器 ====================
+  // ========== 分页 ==========
   .ant-pagination {
     &-item {
-      background: #2a2a2a;
-      border-color: #404040;
-      color: rgba(255, 255, 255, 0.65);
-
-      a {
-        color: rgba(255, 255, 255, 0.65);
-      }
-
-      &:hover a {
-        color: #3a82f8;
-      }
-
+      background: #21262d;
+      border-color: #30363d;
+      color: #8b949e;
+      a { color: #8b949e; }
+      &:hover a { color: #4f8cff; }
       &-active {
-        background: #3a82f8;
-        border-color: #3a82f8;
-
-        a {
-          color: #fff !important;
-        }
+        background: #4f8cff;
+        border-color: #4f8cff;
+        a { color: #fff !important; }
       }
     }
-
-    &-prev,
-    &-next {
-      border-color: #404040;
-      color: rgba(255, 255, 255, 0.35);
-
-      &:hover {
-        border-color: #3a82f8;
-      }
+    &-prev, &-next {
+      border-color: #30363d;
+      color: #6e7681;
+      &:hover { border-color: #4f8cff; }
     }
-
-    &-options {
-      .ant-select-selector {
-        background: #2a2a2a !important;
-        border-color: #404040 !important;
-        color: rgba(255, 255, 255, 0.65) !important;
-      }
+    &-options .ant-select-selector {
+      background: #21262d !important;
+      border-color: #30363d !important;
+      color: #8b949e !important;
     }
   }
 
-  // ==================== 侧边栏 ====================
+  // ========== Sider 暗色 ==========
   .ant-layout-sider {
-    background: #1a1a2e !important;
-    border-right-color: #1a1a1a;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+    background: #161b22 !important;
+    border-right-color: #21262d;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
 
-    .sider-scrollbar::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-    }
+    .sider-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
 
     .ant-menu-inline,
     .ant-menu-vertical,
-    .ant-menu-vertical-left {
-      background: transparent;
-    }
+    .ant-menu-vertical-left { background: transparent; }
 
     .ant-menu-item {
-      color: rgba(255, 255, 255, 0.55);
+      color: #8b949e;
+      &::before { display: none !important; }
 
       &:hover {
-        background: rgba(255, 255, 255, 0.04);
-        color: rgba(255, 255, 255, 0.85);
-
-        &::before {
-          background: rgba(58, 130, 248, 0.3);
-        }
+        background: #21262d;
+        color: #e6edf3;
       }
 
       &.ant-menu-item-selected {
-        background: rgba(58, 130, 248, 0.1) !important;
-        color: #fff !important;
-        box-shadow: inset 3px 0 8px -3px rgba(58, 130, 248, 0.3);
-
-        &::before {
-          background: #3a82f8;
-          box-shadow: 0 0 8px rgba(58, 130, 248, 0.4);
-        }
+        background: rgba(79, 140, 255, 0.12) !important;
+        color: #4f8cff !important;
       }
     }
 
     .ant-menu-submenu-title {
-      color: rgba(255, 255, 255, 0.55);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.04);
-        color: rgba(255, 255, 255, 0.85);
-      }
+      color: #8b949e;
+      &:hover { background: #21262d; color: #e6edf3; }
     }
-
-    .ant-menu-sub {
-      .ant-menu-item {
-        color: rgba(255, 255, 255, 0.4);
-      }
-    }
+    .ant-menu-sub .ant-menu-item { color: #6e7681; }
 
     .sider-user-card {
-      border-top-color: #1a1a1a;
-      box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.15);
+      border-top-color: #21262d;
+      background: transparent;
+      box-shadow: none;
 
       .ant-avatar {
         border-color: rgba(255, 255, 255, 0.1);
         box-shadow: none;
       }
-
-      .user-card-name {
-        color: rgba(255, 255, 255, 0.75);
-      }
-
-      .user-card-role {
-        color: rgba(255, 255, 255, 0.3);
-      }
+      .user-card-name { color: #e6edf3; }
+      .user-card-role { color: #6e7681; }
     }
   }
 
   .ant-layout-sider-trigger {
-    background: #1a1a2e;
-    color: rgba(255, 255, 255, 0.4);
-    border-top-color: #1a1a1a;
-    transition: background 0.15s ease, color 0.15s ease;
-
+    background: #161b22;
+    color: #6e7681;
+    border-top-color: #21262d;
     &:hover {
-      background: rgba(58, 130, 248, 0.08);
-      color: #3a82f8;
+      background: rgba(79, 140, 255, 0.08);
+      color: #4f8cff;
     }
   }
 
-  // ==================== 空状态 ====================
-  .ant-empty-description {
-    color: rgba(255, 255, 255, 0.25);
-  }
+  // ========== 空状态 ==========
+  .ant-empty-description { color: #6e7681; }
+  .ant-empty-image svg { filter: brightness(0.6); }
 
-  .ant-empty-image svg {
-    filter: brightness(0.6);
-  }
-
-  // ==================== 选择器 ====================
+  // ========== 选择器 ==========
   .ant-select {
-    &-search__field {
-      color: inherit;
-    }
-
-    &-selection-selected-value {
-      color: #e0e0e0;
-    }
-
-    .ant-select-arrow {
-      color: rgba(255, 255, 255, 0.2);
-    }
+    &-search__field { color: inherit; }
+    &-selection-selected-value { color: #e6edf3; }
+    .ant-select-arrow { color: #6e7681; }
   }
 
-  // ==================== 复选框 / 单选框 ====================
-  .ant-checkbox-wrapper,
-  .ant-radio-wrapper {
-    color: rgba(255, 255, 255, 0.65);
-  }
+  // ========== 复选框/单选框 ==========
+  .ant-checkbox-wrapper, .ant-radio-wrapper { color: #8b949e; }
+  .ant-checkbox-inner { background: #21262d; border-color: #30363d; }
+  .ant-radio-inner { background: #21262d; border-color: #30363d; }
 
-  .ant-checkbox-inner {
-    background: #2a2a2a;
-    border-color: #404040;
-  }
-
-  .ant-radio-inner {
-    background: #2a2a2a;
-    border-color: #404040;
-  }
-
-  // ==================== 分割线 ====================
-  .ant-divider {
-    border-top-color: #333;
-  }
-
-  .ant-divider-inner-text {
-    color: rgba(255, 255, 255, 0.35);
-  }
-
+  // ========== 分割线 ==========
+  .ant-divider { border-top-color: #30363d; }
+  .ant-divider-inner-text { color: #6e7681; }
   .divider-fade {
-    background: linear-gradient(90deg, transparent, #333 20%, #333 80%, transparent) !important;
+    background: linear-gradient(90deg, transparent, #30363d 20%, #30363d 80%, transparent) !important;
   }
 
-  // ==================== 回到顶部 ====================
+  // ========== 回到顶部 ==========
   .ant-backtop {
-    background: #2a2a2a;
-    color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    background: #21262d;
+    color: #8b949e;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
-  // ==================== vuescroll 暗色适配 ====================
-  .__vuescroll .__rail-is-vertical .__bar-y {
-    background: rgba(255, 255, 255, 0.1) !important;
-  }
+  // ========== vuescroll ==========
+  .__vuescroll .__rail-is-vertical .__bar-y { background: rgba(255, 255, 255, 0.1) !important; }
+  .__vuescroll .__rail-is-horizontal .__bar-x { background: rgba(255, 255, 255, 0.1) !important; }
 
-  .__vuescroll .__rail-is-horizontal .__bar-x {
-    background: rgba(255, 255, 255, 0.1) !important;
-  }
-
-  // ==================== 页面头部/面包屑 ====================
+  // ========== 页面头部 ==========
   .page-header {
-    background: #252525;
-    border-bottom-color: #333;
-
-    .detail .main .title {
-      color: #e0e0e0;
-    }
+    background: #1c2129;
+    border-bottom-color: #30363d;
+    .detail .main .title { color: #e6edf3; }
   }
 
-  // ==================== 内容区包裹 ====================
-  .wrapper-main {
-    background: #1e1e1e;
-  }
+  .wrapper-main { background: #1c2129; }
 
   .layout-content .content-header {
-    border-bottom-color: #333;
-    color: #e0e0e0;
-
-    h1 {
-      color: #3a82f8;
-    }
+    border-bottom-color: #30363d;
+    color: #e6edf3;
+    h1 { color: #4f8cff; }
   }
 
-  // ==================== 文字色覆盖 ====================
-  .page-title {
-    color: #e0e0e0;
-  }
+  // ========== 文字覆盖 ==========
+  .page-title { color: #e6edf3; }
+  .content-title { color: #8b949e; border-bottom-color: #30363d; }
+  .layout-copy { color: #6e7681; }
 
-  .content-title {
-    color: rgba(255, 255, 255, 0.65);
-    border-bottom-color: #333;
-  }
-
-  .layout-copy {
-    color: rgba(255, 255, 255, 0.25);
-  }
-
-  // ==================== 项目导航栏补充 ====================
-  .project-navigation {
-    background-color: #252525;
-    border-bottom-color: #333;
-
-    .nav-underscore > li > a {
-      color: rgba(255, 255, 255, 0.55);
-    }
-  }
-
-  .simple .project-navigation {
-    background: #252525;
-  }
-
-  // ==================== 滚动模态框 ====================
-  .scroll-modal {
-    .modal-footer {
-      background: #252525;
-      border-top: 1px solid #333;
-    }
-  }
-
-  // ==================== 内容区白底卡片覆盖 ====================
   .has-header-content .layout-content {
-    background: #252525;
-    border-color: #333;
+    background: #1c2129;
+    border-color: #30363d;
+    &:hover { border-color: rgba(79, 140, 255, 0.3); }
+  }
 
-    &:hover {
-      border-color: rgba(58, 130, 248, 0.3);
-    }
+  // ========== 统计卡片(暗) ==========
+  .stat-card {
+    background: #1c2129;
+    border-color: #30363d;
+    .stat-label { color: #6e7681; }
+    .stat-value { color: #e6edf3; }
+    &:hover { border-color: rgba(79, 140, 255, 0.3); }
+  }
+
+  // ========== 空状态(暗) ==========
+  .empty-state {
+    .empty-icon { background: #21262d; color: #6e7681; }
+    .empty-title { color: #8b949e; }
+    .empty-desc { color: #6e7681; }
   }
 }
 
-// ==================== 暗色模式过渡（仅对关键元素） ====================
+// ========== 暗色模式过渡 ==========
 #layout.layout-dark {
   transition: background-color 0.2s ease, color 0.2s ease;
 
@@ -1010,7 +599,9 @@
   .ant-table,
   .ant-dropdown-menu,
   .page-header,
-  .wrapper-main {
+  .wrapper-main,
+  .stat-card,
+  .empty-state {
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   }
 }

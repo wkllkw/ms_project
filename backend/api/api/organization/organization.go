@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"test.com/project-api/api/rpc"
+	"test.com/project-api/internal/authz"
 	"test.com/project-api/internal/database/gorms"
 	"test.com/project-api/pkg/codecs"
 	common "test.com/project-common"
@@ -292,6 +294,20 @@ func (h *HandlerOrganization) quitOrganization(c *gin.Context) {
 		return
 	}
 
+	// 清除组织角色授权
+	if err := tx.Exec("DELETE FROM ms_organization_auth WHERE member_code = ? AND organization_code = ?", memberId, orgCodeInt).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "退出失败"))
+		return
+	}
+
+	// 清除组织成员账户关联
+	if err := tx.Exec("DELETE FROM ms_member_account WHERE member_code = ? AND organization_code = ?", memberId, orgCodeInt).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusOK, result.Fail(http.StatusInternalServerError, "退出失败"))
+		return
+	}
+
 	tx.Commit()
 	c.JSON(http.StatusOK, result.Success(""))
 }
@@ -313,4 +329,310 @@ func decryptOrgCode(v interface{}) int64 {
 	default:
 		return 0
 	}
+}
+
+// ===== 组织级角色管理 =====
+
+// orgAuthRow 组织角色授权表
+type orgAuthRow struct {
+	Id               int64 `gorm:"primaryKey;autoIncrement"`
+	OrganizationCode int64 `gorm:"column:organization_code"`
+	MemberCode       int64 `gorm:"column:member_code"`
+	AuthId           int64 `gorm:"column:auth_id"`
+	CreateTime       int64 `gorm:"column:create_time"`
+}
+
+func (*orgAuthRow) TableName() string { return "ms_organization_auth" }
+
+// orgMemberListReq 组织成员列表查询参数
+type orgMemberListReq struct {
+	OrganizationCode string `form:"organizationCode" json:"organizationCode"`
+	Keyword          string `form:"keyword" json:"keyword"`
+	SearchType       string `form:"searchType" json:"searchType"`
+	DepartmentCode   string `form:"departmentCode" json:"departmentCode"`
+	Page             int64  `form:"page" json:"page"`
+	PageSize         int64  `form:"pageSize" json:"pageSize"`
+}
+
+// listMembersWithAuth 获取组织成员列表及其角色
+func (h *HandlerOrganization) listMembersWithAuth(c *gin.Context) {
+	result := &common.Result{}
+	db := gorms.GetDB().WithContext(c.Request.Context())
+
+	orgCode := decryptOrgCode(c.PostForm("organizationCode"))
+	if orgCode == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "缺少组织参数"))
+		return
+	}
+
+	// 分页参数
+	page := int64(1)
+	pageSize := int64(20)
+	if p := c.PostForm("page"); p != "" {
+		page, _ = strconv.ParseInt(p, 10, 64)
+	}
+	if ps := c.PostForm("pageSize"); ps != "" {
+		pageSize, _ = strconv.ParseInt(ps, 10, 64)
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	// 查询组织成员（通过 ms_member_account）
+	type memberResult struct {
+		Id         int64  `gorm:"column:id"`
+		Account    string `gorm:"column:account"`
+		Name       string `gorm:"column:name"`
+		Status     int    `gorm:"column:status"`
+		Avatar     string `gorm:"column:avatar"`
+		Email      string `gorm:"column:email"`
+		Mobile     string `gorm:"column:mobile"`
+		CreateTime int64  `gorm:"column:create_time"`
+		IsOwner    int    `gorm:"column:is_owner"`
+	}
+
+	query := db.Table("ms_member AS m").
+		Select("m.id, m.account, m.name, m.status, m.avatar, m.email, m.mobile, m.create_time, ma.is_owner").
+		Joins("JOIN ms_member_account AS ma ON ma.member_code = m.id AND ma.organization_code = ?", orgCode)
+
+	keyword := c.PostForm("keyword")
+	if keyword != "" {
+		query = query.Where("m.name LIKE ? OR m.account LIKE ? OR m.email LIKE ?",
+			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+	}
+
+	searchType := c.PostForm("searchType")
+	switch searchType {
+	case "4": // 按部门筛选
+		departmentCode := c.PostForm("departmentCode")
+		if departmentCode != "" {
+			depId, err := codecs.DecryptInt64(departmentCode)
+			if err == nil {
+				query = query.Where("m.id IN (SELECT member_id FROM ms_department_member WHERE department_id=?)", depId)
+			}
+		}
+	case "3": // 停用的成员
+		query = query.Where("m.status = 0")
+	}
+
+	var total int64
+	_ = query.Count(&total).Error
+
+	var members []memberResult
+	_ = query.Order("ma.is_owner DESC, m.id DESC").
+		Limit(int(pageSize)).Offset(int((page - 1) * pageSize)).
+		Scan(&members).Error
+
+	// 为每个成员查询部门和角色
+	out := make([]gin.H, 0, len(members))
+	for _, m := range members {
+		// 查询部门
+		type deptRow struct {
+			Id   int64  `gorm:"column:id"`
+			Name string `gorm:"column:name"`
+		}
+		var depts []deptRow
+		db.Table("ms_department AS d").
+			Select("d.id, d.name").
+			Joins("JOIN ms_department_member AS dm ON dm.department_id = d.id").
+			Where("dm.member_id = ? AND d.organization_code = ? AND d.deleted = 0", m.Id, orgCode).
+			Scan(&depts)
+
+		deptNames := make([]string, 0, len(depts))
+		deptCodes := make([]string, 0, len(depts))
+		for _, d := range depts {
+			deptNames = append(deptNames, d.Name)
+			deptCodes = append(deptCodes, codecs.EncryptInt64(d.Id))
+		}
+
+		// 查询组织级角色
+		var orgAuth orgAuthRow
+		authId := int64(0)
+		if err := db.Where("member_code=? AND organization_code=?", m.Id, orgCode).First(&orgAuth).Error; err == nil {
+			authId = orgAuth.AuthId
+		}
+
+		out = append(out, gin.H{
+			"id":            m.Id,
+			"code":          codecs.EncryptInt64(m.Id),
+			"name":          m.Name,
+			"account":       m.Account,
+			"email":         m.Email,
+			"mobile":        m.Mobile,
+			"avatar":        m.Avatar,
+			"status":        m.Status,
+			"create_time":   m.CreateTime,
+			"is_owner":      m.IsOwner,
+			"departments":   deptNames,
+			"departmentCodes": deptCodes,
+			"authorize":     authId,
+		})
+	}
+
+	// 获取可用角色列表
+	authList := authListForOrg(db)
+
+	c.JSON(http.StatusOK, result.Success(gin.H{
+		"list":     out,
+		"total":    total,
+		"authList": authList,
+	}))
+}
+
+// setMemberAuth 设置组织成员的角色
+func (h *HandlerOrganization) setMemberAuth(c *gin.Context) {
+	result := &common.Result{}
+	db := gorms.GetDB().WithContext(c.Request.Context())
+
+	orgCodeStr := c.PostForm("organizationCode")
+	memberCodeStr := c.PostForm("memberCode")
+	authIdStr := c.PostForm("authId")
+
+	orgCode := decryptOrgCode(orgCodeStr)
+	if orgCode == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "organizationCode无效"))
+		return
+	}
+
+	memberCode := decryptOrgCode(memberCodeStr)
+	if memberCode == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "memberCode无效"))
+		return
+	}
+
+	// 不能给自己设置角色（防止权限提升）
+	memberId := c.GetInt64("memberId")
+	if memberCode == memberId {
+		c.JSON(http.StatusOK, result.Fail(400, "不能修改自己的角色"))
+		return
+	}
+
+	// 验证目标用户是否属于该组织
+	var mCount int64
+	db.Table("ms_member_account").Where("member_code=? AND organization_code=?", memberCode, orgCode).Count(&mCount)
+	if mCount == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "该用户不属于此组织"))
+		return
+	}
+
+	if authIdStr == "" || authIdStr == "0" {
+		// 移除角色
+		db.Where("member_code=? AND organization_code=?", memberCode, orgCode).Delete(&orgAuthRow{})
+		c.JSON(http.StatusOK, result.Success([]int{}))
+		return
+	}
+
+	authId, err := strconv.ParseInt(authIdStr, 10, 64)
+	if err != nil || authId == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "authId无效"))
+		return
+	}
+
+	// 验证角色是否存在
+	var authCount int64
+	db.Table("ms_project_auth").Where("id=? AND status=1", authId).Count(&authCount)
+	if authCount == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "角色不存在或已禁用"))
+		return
+	}
+
+	// Upsert：存在则更新，不存在则创建
+	var existing orgAuthRow
+	err = db.Where("member_code=? AND organization_code=?", memberCode, orgCode).First(&existing).Error
+	if err == nil {
+		db.Model(&orgAuthRow{}).Where("id=?", existing.Id).Update("auth_id", authId)
+	} else {
+		db.Create(&orgAuthRow{
+			OrganizationCode: orgCode,
+			MemberCode:       memberCode,
+			AuthId:           authId,
+			CreateTime:       time.Now().UnixMilli(),
+		})
+	}
+
+	c.JSON(http.StatusOK, result.Success([]int{}))
+}
+
+// removeMemberAuth 移除组织成员的角色（恢复为默认）
+func (h *HandlerOrganization) removeMemberAuth(c *gin.Context) {
+	result := &common.Result{}
+	db := gorms.GetDB().WithContext(c.Request.Context())
+
+	orgCode := decryptOrgCode(c.PostForm("organizationCode"))
+	memberCode := decryptOrgCode(c.PostForm("memberCode"))
+
+	if orgCode == 0 || memberCode == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "参数无效"))
+		return
+	}
+
+	// 不能移除自己
+	memberId := c.GetInt64("memberId")
+	if memberCode == memberId {
+		c.JSON(http.StatusOK, result.Fail(400, "不能修改自己的角色"))
+		return
+	}
+
+	db.Where("member_code=? AND organization_code=?", memberCode, orgCode).Delete(&orgAuthRow{})
+	c.JSON(http.StatusOK, result.Success([]int{}))
+}
+
+// getMemberAuth 获取指定成员在当前组织的角色
+func (h *HandlerOrganization) getMemberAuth(c *gin.Context) {
+	result := &common.Result{}
+	db := gorms.GetDB().WithContext(c.Request.Context())
+
+	orgCode := decryptOrgCode(c.PostForm("organizationCode"))
+	memberCode := decryptOrgCode(c.PostForm("memberCode"))
+
+	if orgCode == 0 || memberCode == 0 {
+		c.JSON(http.StatusOK, result.Fail(400, "参数无效"))
+		return
+	}
+
+	authId := authz.GetUserOrgAuthId(db, memberCode, orgCode)
+	nodes := authz.GetUserOrgNodes(db, memberCode, orgCode)
+
+	// 获取角色名称
+	roleName := ""
+	if authId > 0 {
+		type roleRow struct {
+			Title string `gorm:"column:title"`
+		}
+		var r roleRow
+		db.Table("ms_project_auth").Select("title").Where("id=?", authId).Scan(&r)
+		roleName = r.Title
+	}
+
+	c.JSON(http.StatusOK, result.Success(gin.H{
+		"authId":   authId,
+		"roleName": roleName,
+		"nodes":    nodes,
+	}))
+}
+
+// authListForOrg 获取组织可用的角色列表
+func authListForOrg(db *gorm.DB) []gin.H {
+	type authRow struct {
+		Id        int64  `gorm:"column:id"`
+		Title     string `gorm:"column:title"`
+		Desc      string `gorm:"column:desc"`
+		Status    int    `gorm:"column:status"`
+		IsDefault int    `gorm:"column:is_default"`
+	}
+	var rows []authRow
+	db.Table("ms_project_auth").Where("status=1").Order("id ASC").Scan(&rows)
+	out := make([]gin.H, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, gin.H{
+			"id":         r.Id,
+			"title":      r.Title,
+			"desc":       r.Desc,
+			"is_default": r.IsDefault,
+		})
+	}
+	return out
 }

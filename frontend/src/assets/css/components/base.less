@@ -5,16 +5,16 @@ body {
 
 // ========== 路由过渡动画（淡入+微位移） ==========
 .router-fade-enter-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .router-fade-leave-active {
-  transition: opacity 0.15s ease;
+  transition: opacity 0.12s ease;
 }
 
 .router-fade-enter {
   opacity: 0;
-  transform: translateY(4px);
+  transform: translateY(3px);
 }
 
 .router-fade-leave-to {
@@ -22,16 +22,16 @@ body {
 }
 
 .router-fades-enter-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .router-fades-leave-active {
-  transition: opacity 0.15s ease;
+  transition: opacity 0.12s ease;
 }
 
 .router-fades-enter {
   opacity: 0;
-  transform: translateY(4px);
+  transform: translateY(3px);
 }
 
 .router-fades-leave-to {
@@ -55,6 +55,41 @@ body {
   &:hover {
     background: rgba(0, 0, 0, 0.2);
   }
+}
+
+// ========== 骨架屏 ==========
+.skeleton-row {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 37%, #f0f0f0 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease infinite;
+  margin-bottom: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+// ========== 卡片悬浮提升 ==========
+.card-elevate {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+}
+
+// ========== 统计数字入场 ==========
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// ========== 侧边栏过渡 ==========
+.sider-transition {
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 // ========== 全局卡片圆角 ==========
@@ -86,9 +121,9 @@ body {
   }
 }
 
-// ========== 选中高亮效果 ==========
+// ========== 选中高亮 ==========
 ::selection {
-  background: rgba(58, 130, 248, 0.15);
+  background: rgba(79, 140, 255, 0.15);
   color: inherit;
 }
 
@@ -97,11 +132,11 @@ body {
 .ant-input-affix-wrapper-focused,
 .ant-select-selection:focus,
 .ant-picker-focused {
-  box-shadow: 0 0 0 2px rgba(58, 130, 248, 0.1) !important;
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.08) !important;
 }
 
-.ant-layout{
-  background: #f5f5f5;
+.ant-layout {
+  background: #f5f7fb;
 }
 .pull-right {
   float: right;
@@ -186,7 +221,7 @@ body {
 .alert-white {
   background: #fff;
   border: 1px solid #e0e0e0;
-  border-left: solid 3px #3a82f8;
+  border-left: solid 3px #4f8cff;
 
   .ant-alert-message {
     margin: 5px 5px 5px 5px;
@@ -355,7 +390,7 @@ body {
 
 .badge-blue {
   .ant-badge-status-dot {
-    background-color: #3a82f8;
+    background-color: #4f8cff;
   }
 }
 
@@ -524,7 +559,7 @@ body {
   bottom: 0;
   height: 3px;
   width: 100%;
-  border-bottom: 0 solid #3a82f8;
+  border-bottom: 0 solid #4f8cff;
   content: '';
   opacity: 0;
   transition: opacity 0.2s ease, border-width 0.2s ease;

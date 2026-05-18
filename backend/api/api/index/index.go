@@ -499,12 +499,13 @@ func joinStrings(strs []string, sep string) string {
 	return result
 }
 
-// nodes 获取当前用户的权限节点列表
+// nodes 获取当前用户的权限节点列表（项目级 + 组织级合并）
 func (h *HandlerIndex) nodes(c *gin.Context) {
 	result := &common.Result{}
 	memberId := c.GetInt64("memberId")
+	orgCode := c.GetInt64("organizationCode")
 	db := gorms.GetDB()
-	nodes := authz.GetUserNodes(db, memberId)
+	nodes := authz.GetAllNodes(db, memberId, orgCode)
 	if nodes == nil {
 		nodes = []string{}
 	}

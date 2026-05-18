@@ -99,22 +99,6 @@
             </a-form-item>
 
             <div class="user-login-other">
-                <span>其他登录方式</span>
-                <a-tooltip :mouseEnterDelay="0.3"
-                           title="钉钉登录">
-                    <a @click="dingTalkOauth">
-                        <a-icon class="item-icon" type="dingding"/>
-                    </a>
-                </a-tooltip>
-                <!--<a>
-                    <a-icon class="item-icon" type="alipay-circle"></a-icon>
-                </a>
-                <a>
-                    <a-icon class="item-icon" type="taobao-circle"></a-icon>
-                </a>
-                <a>
-                    <a-icon class="item-icon" type="weibo-circle"></a-icon>
-                </a>-->
                 <router-link class="register" :to="{ name: 'register' }">注册账户</router-link>
             </div>
         </a-form>
@@ -123,16 +107,14 @@
 
 <script>
     import md5 from 'md5'
-    import * as dd from 'dingtalk-jsapi';
     import {mapActions} from 'vuex'
     import {mapState} from 'vuex'
     import {Login, getCaptcha} from '@/api/user'
     import {info} from '@/api/system';
     import config from "@/config/config";
-    import {appendMenuRoutes, checkResponse, timeFix} from '@/assets/js/utils'
+    import {appendMenuRoutes, checkResponse, getFirstAvailableRoute, timeFix} from '@/assets/js/utils'
     import {getStore} from '@/assets/js/storage'
     import {_checkLogin} from "../../api/user";
-    import {dingTalkLoginByCode, dingTalkOauth} from "../../api/oauth";
     import {notice} from "../../assets/js/notice";
 
     export default {
@@ -286,9 +268,18 @@
                 }
                 this.loginBtn = false;
                 const orgCode = org && org.code ? org.code : '';
-                let redirect = this.$route.query.redirect || config.HOME_PAGE + (orgCode ? '/' + orgCode : '');
+                // 检查是否有 URL 参数指定 redirect，否则根据权限智能选择
+                let redirect = this.$route.query.redirect;
                 if (redirect == config.HOME_PAGE) {
-                    redirect = config.HOME_PAGE + (orgCode ? '/' + orgCode : '')
+                    redirect = null; // 等同于无指定，走智能路由
+                }
+                if (!redirect) {
+                    const permissionNodes = this.$store.state.permissionNodes || getStore('permissionNodes', true) || [];
+                    redirect = getFirstAvailableRoute(permissionNodes, org);
+                }
+                // 如果权限路由返回登录页（极端情况），则回退到首页
+                if (redirect === '/member/login') {
+                    redirect = config.HOME_PAGE + (orgCode ? '/' + orgCode : '');
                 }
                 this.$router.replace({
                     path: redirect
@@ -298,31 +289,6 @@
                     description: `${res.data.member.name}，${timeFix()}，欢迎回来`,
                 });
                 this.oauthLoading = false;
-            },
-            dingTalkOauth() {
-                let url = dingTalkOauth() + '?redirect=' + this.$route.query.redirect;
-                let redirect = this.$route.query.redirect;
-                if (redirect) {
-                    url += '?redirect=' + redirect;
-                }
-                location.href = url;
-            },
-            dingTalkLogin() {
-                let app = this;
-                dd.ready(function () {
-                    // dd.ready参数为回调函数，在环境准备就绪时触发，jsapi的调用需要保证在该回调函数触发后调用，否则无效。
-                    dd.runtime.permission.requestAuthCode({
-                        corpId: "ding42ccb1a1923b200f35c2f4657eb6378f",
-                        onSuccess: function (result) {
-                            app.oauthLoading = true;
-                            dingTalkLoginByCode({code: result.code}).then(res => {
-                                if (checkResponse(res)) {
-                                    app.dealDataBeforeLogin(res);
-                                }
-                            });
-                        }
-                    });
-                });
             },
             checkLogin() {
                 _checkLogin().then(res => {

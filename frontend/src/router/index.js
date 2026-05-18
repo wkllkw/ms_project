@@ -4,7 +4,7 @@ import Router from 'vue-router'
 import Index from '@/views/index'
 import Home from './home';
 import {getStore, setStore} from "../assets/js/storage";
-import {appendMenuRoutes, isTokenExpired} from "../assets/js/utils";
+import {appendMenuRoutes, getFirstAvailableRoute, isTokenExpired} from "../assets/js/utils";
 import config from "../config/config";
 import {refreshAccessToken} from "../api/common/common";
 
@@ -27,7 +27,7 @@ const ignoredNavigationFailureNames = new Set([
 const originalPush = Router.prototype.push;
 Router.prototype.push = function push(location) {
     return originalPush.call(this, location).catch(err => {
-        if (!err || !ignoredNavigationFailureNames.has(err.name)) {
+        if (!err || (!ignoredNavigationFailureNames.has(err.name) && !err._isRouter)) {
             throw err;
         }
     });
@@ -36,7 +36,7 @@ Router.prototype.push = function push(location) {
 const originalReplace = Router.prototype.replace;
 Router.prototype.replace = function replace(location) {
     return originalReplace.call(this, location).catch(err => {
-        if (!err || !ignoredNavigationFailureNames.has(err.name)) {
+        if (!err || (!ignoredNavigationFailureNames.has(err.name) && !err._isRouter)) {
             throw err;
         }
     });
@@ -153,18 +153,34 @@ router.beforeEach((to, from, next) => {
         next({ name: 'login', query: {redirect: to.fullPath} });
         return;
     }
-    // 已登录时，访问登录页则跳转首页
+    // 已登录时，访问登录页则跳转第一个有权限的页面（但从错误页或无权访问时允许放行）
     if (to.meta.model === 'Login' && store.state.logged) {
+        if (from.path === '/403' || from.path === '/404' || from.path === '/500') {
+            next();
+            return;
+        }
         const org = getStore('currentOrganization', true);
-        const homePath = config.HOME_PAGE + (org && org.code ? '/' + org.code : '');
-        next({path: homePath});
+        const permissionNodes = store.state.permissionNodes || getStore('permissionNodes', true) || [];
+        let targetRoute = getFirstAvailableRoute(permissionNodes, org);
+        if (targetRoute === '/member/login') {
+            // 无任何可用权限节点，放行到登录页让用户切换账号
+            next();
+            return;
+        }
+        next({path: targetRoute});
         return;
     }
     //页面中转
     if (to.name === 'index' || to.path === '/index' || to.path === '/') {
         const org = getStore('currentOrganization', true);
-        const homePath = config.HOME_PAGE + (org && org.code ? '/' + org.code : '');
-        next({path: homePath});
+        const permissionNodes = store.state.permissionNodes || getStore('permissionNodes', true) || [];
+        let targetRoute = getFirstAvailableRoute(permissionNodes, org);
+        if (targetRoute === '/member/login') {
+            // 无任何可用权限节点，直接跳转登录页
+            next({ name: 'login' });
+            return;
+        }
+        next({path: targetRoute});
         return;
     }
     // 权限节点校验：如果路由 meta 中定义了 permission，检查用户是否拥有该节点
@@ -174,9 +190,9 @@ router.beforeEach((to, from, next) => {
         // 如果有权限节点配置但用户不在权限列表中
         // 注意：当 permissionNodes 为空数组时，说明用户没有任何权限，应拒绝访问受保护页面
         if (!Array.isArray(permissionNodes) || !permissionNodes.includes(requiredNode)) {
-            // 避免重定向死循环：如果来自错误页，不再重定向到403，而是中止导航
+            // 避免重定向死循环：如果来自错误页，跳转到登录页让用户切换账号
             if (from.path === '/403' || from.path === '/404' || from.path === '/500') {
-                next(false);
+                next({ name: 'login' });
                 return;
             }
             next({path: '/403'});
@@ -203,7 +219,7 @@ const ignoredErrorNames = new Set([
     'NavigationAborted',
 ]);
 router.onError((error) => {
-    if (error && ignoredErrorNames.has(error.name)) {
+    if (error && (ignoredErrorNames.has(error.name) || error._isRouter)) {
         return;
     }
     console.error('[Router Error]', error);

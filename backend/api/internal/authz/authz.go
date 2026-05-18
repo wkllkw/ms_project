@@ -228,3 +228,97 @@ func IsAdmin(db *gorm.DB, memberId int64) bool {
 	db.Table("ms_project_member").Where("member_code=? AND is_owner=1", memberId).Count(&count)
 	return count > 0
 }
+
+// ===== 组织级权限 =====
+
+// orgAuthRow 组织角色授权表
+type orgAuthRow struct {
+	Id               int64 `gorm:"primaryKey;autoIncrement"`
+	OrganizationCode int64 `gorm:"column:organization_code"`
+	MemberCode       int64 `gorm:"column:member_code"`
+	AuthId           int64 `gorm:"column:auth_id"`
+}
+
+func (*orgAuthRow) TableName() string { return "ms_organization_auth" }
+
+// GetUserOrgAuthId 获取用户在指定组织中的权限角色ID
+// 优先查 ms_organization_auth，如果没有则判断是否为组织创建者（创建者给予 org_owner 角色），
+// 最后回退到项目级默认角色
+func GetUserOrgAuthId(db *gorm.DB, memberId, orgCode int64) int64 {
+	// 1. 从组织角色表查询
+	var oa orgAuthRow
+	err := db.Where("member_code=? AND organization_code=?", memberId, orgCode).First(&oa).Error
+	if err == nil && oa.AuthId > 0 {
+		return oa.AuthId
+	}
+	// 2. 判断是否为组织创建者
+	var ownerCount int64
+	db.Table("ms_organization").Where("id=? AND member_id=?", orgCode, memberId).Count(&ownerCount)
+	if ownerCount > 0 {
+		// 组织创建者使用默认角色
+		var auth authRow
+		if err := db.Where("is_default=1 AND status=1").First(&auth).Error; err == nil {
+			return auth.Id
+		}
+	}
+	// 3. 判断是否为 ms_member_account 中 is_owner=1 的组织管理员
+	var accountOwnerCount int64
+	db.Table("ms_member_account").Where("member_code=? AND organization_code=? AND is_owner=1", memberId, orgCode).Count(&accountOwnerCount)
+	if accountOwnerCount > 0 {
+		var auth authRow
+		if err := db.Where("is_default=1 AND status=1").First(&auth).Error; err == nil {
+			return auth.Id
+		}
+	}
+	return 0
+}
+
+// GetUserOrgNodes 获取用户在指定组织中的权限节点列表
+func GetUserOrgNodes(db *gorm.DB, memberId, orgCode int64) []string {
+	authId := GetUserOrgAuthId(db, memberId, orgCode)
+	if authId == 0 {
+		return []string{}
+	}
+	var rows []authNodeRow
+	db.Where("auth_id=?", authId).Find(&rows)
+	nodes := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if r.Node != "" {
+			nodes = append(nodes, r.Node)
+		}
+	}
+	return nodes
+}
+
+// HasOrgNode 检查用户是否拥有指定组织级节点权限
+func HasOrgNode(db *gorm.DB, memberId, orgCode int64, node string) bool {
+	if node == "" || node == "#" {
+		return true
+	}
+	nodes := GetUserOrgNodes(db, memberId, orgCode)
+	for _, n := range nodes {
+		if n == node {
+			return true
+		}
+	}
+	return false
+}
+
+// GetAllNodes 获取用户的所有权限节点（项目级 + 组织级合并）
+func GetAllNodes(db *gorm.DB, memberId, orgCode int64) []string {
+	projectNodes := GetUserNodes(db, memberId)
+	orgNodes := GetUserOrgNodes(db, memberId, orgCode)
+	// 合并去重
+	merged := make(map[string]bool)
+	for _, n := range projectNodes {
+		merged[n] = true
+	}
+	for _, n := range orgNodes {
+		merged[n] = true
+	}
+	result := make([]string, 0, len(merged))
+	for n := range merged {
+		result = append(result, n)
+	}
+	return result
+}

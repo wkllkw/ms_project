@@ -217,9 +217,8 @@ func (ls *LoginService) Login(ctx context.Context, msg *login.LoginMessage) (*lo
 
 func (ls *LoginService) TokenVerify(ctx context.Context, msg *login.LoginMessage) (*login.LoginResponse, error) {
 	token := msg.Token
-	if strings.Contains(token, "bearer") {
-		token = strings.ReplaceAll(token, "bearer ", "")
-	}
+	token = strings.TrimPrefix(token, "Bearer ")
+	token = strings.TrimPrefix(token, "bearer ")
 	parseToken, err := jwts.ParseToken(token, config.C.JwtConfig.AccessSecret)
 	if err != nil {
 		zap.L().Error("Login  TokenVerify error", zap.Error(err))

@@ -414,3 +414,49 @@ export const eachArray = (arr, fn) => {
         }
     }
 };
+
+/**
+ * 根据用户权限节点查找首个可访问的路由
+ * @param {Array} permissionNodes 用户权限节点数组
+ * @param {Object|String} org 组织对象或组织code
+ * @returns {String} 路由路径
+ */
+export const getFirstAvailableRoute = (permissionNodes, org) => {
+    const orgCode = (typeof org === 'object' && org.code) ? org.code : (typeof org === 'string' ? org : '');
+    const homePath = '/home' + (orgCode ? '/' + orgCode : '');
+
+    if (!Array.isArray(permissionNodes) || permissionNodes.length === 0) {
+        return '/member/login';
+    }
+
+    // 有 home 权限 → 返回首页
+    if (permissionNodes.includes('home')) {
+        return homePath;
+    }
+
+    // 权限节点 → 路由映射（按优先级排列）
+    const nodeRouteMap = [
+        { node: 'project.list', route: '/project/list/my' },
+        { node: 'project.manage', route: '/organization/index' },
+        { node: 'project.template', route: '/project/template' },
+        { node: 'project.analysis', route: '/project/analysis' },
+        { node: 'notify.notice', route: '/notify/notice' },
+        { node: 'calendar', route: '/calendar' },
+        { node: 'members.index', route: '/members' },
+        { node: 'organization.member', route: '/organization/members' },
+        { node: 'organization.setting', route: '/organization/setting' },
+        { node: 'organization.department', route: '/organization/department' },
+        { node: 'project', route: '/project/list/my' },
+        { node: 'notify', route: '/notify/notice' },
+        { node: 'organization', route: '/organization/members' },
+    ];
+
+    for (const item of nodeRouteMap) {
+        if (permissionNodes.includes(item.node)) {
+            return item.route;
+        }
+    }
+
+    // 兜底：不知道去哪，回登录页
+    return '/member/login';
+};

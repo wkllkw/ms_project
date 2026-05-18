@@ -1,76 +1,94 @@
+// ============================================================
+// FlowHub Modern Layout v2.0
+// 设计语言：Vercel × Linear — 毛玻璃Header + 极简Sider
+// ============================================================
+
 #layout {
   height: 100vh;
 
+  // ========== Header (毛玻璃) ==========
   .ant-layout-header {
-    background: #fff;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: saturate(180%) blur(10px);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
     padding: 0;
-    line-height: 56px;
-    height: 56px;
+    line-height: 52px;
+    height: 52px;
     position: fixed;
     width: 100%;
     top: 0;
-    z-index: 5;
-    border-bottom: 1px solid #c0c0c0;
+    z-index: 10;
+    border-bottom: 1px solid #eef0f2;
+    box-shadow: none;
     display: flex;
     align-items: center;
+
     ul {
       border-bottom: none;
     }
   }
 
+  // ========== Logo ==========
   .logo {
     height: 28px;
-    padding: 14px;
+    padding: 12px 24px;
     text-align: center;
     box-sizing: content-box;
-    transition: all .15s;
-    width: 224px;
+    transition: all 0.15s ease;
+    width: 172px;
     float: left;
     line-height: 1.4;
     background: initial;
-    color: rgba(0, 0, 0, 0.85);
+    color: #1a1d23;
     cursor: pointer;
+
     .logo-img {
-      width: 28px;
+      width: 24px;
+      height: 24px;
       position: absolute;
-      left: 32px;
+      left: 24px;
       top: 14px;
-      transition: all .15s;
+      transition: all 0.15s ease;
     }
 
     .title {
       color: inherit;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       position: relative;
+
       .version {
-        color: rgba(0, 0, 0, 0.35);
+        color: #9ca3af;
         position: absolute;
         right: -25px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 400;
       }
     }
   }
 
+  // ========== Header 右侧菜单 ==========
   .right-menu {
     margin-left: auto;
     padding-right: 16px;
     height: 100%;
-    line-height: 56px;
-    color: rgba(0, 0, 0, 0.65);
+    line-height: 52px;
+    color: #5f6773;
     display: flex;
     align-items: center;
 
     .action {
       cursor: pointer;
-      transition: background-color .15s;
-      padding: 0 8px;
-      height: 56px;
+      transition: background 0.15s ease;
+      padding: 0 10px;
+      height: 52px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
 
       .anticon {
         font-size: 16px;
-        color: rgba(0, 0, 0, 0.55);
+        color: #5f6773;
       }
 
       .action-item {
@@ -90,7 +108,10 @@
       }
 
       &:hover {
-        background: #f5f5f5;
+        background: #f7f8fa;
+        .anticon {
+          color: #1a1d23;
+        }
       }
 
       &.action-avatar {
@@ -103,16 +124,19 @@
     }
   }
 
+  // ========== Sider 侧边栏 ==========
   .ant-layout-sider {
     z-index: 2;
     overflow: hidden;
-    width: 240px !important;
-    max-width: 240px !important;
+    width: 220px !important;
+    max-width: 220px !important;
     height: 100vh;
     position: fixed;
     left: 0;
-    border-right: 1px solid #c0c0c0;
-    background: #fafafa !important;
+    top: 0;
+    border-right: 1px solid #eef0f2;
+    background: #f9fafb !important;
+    box-shadow: 1px 0 4px rgba(0, 0, 0, 0.03);
 
     .ant-layout-sider-children {
       height: 100%;
@@ -125,14 +149,16 @@
       height: 100%;
       overflow: hidden;
       position: relative;
+      padding-top: 52px; // header height offset
     }
 
+    // ========== 菜单区域 ==========
     .sider-menu-section {
       flex: 1 1 auto;
       min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 8px 0;
+      padding: 12px 8px;
 
       &::-webkit-scrollbar {
         width: 4px;
@@ -150,70 +176,86 @@
         background: transparent;
       }
 
-      // 一级 sub-menu 标题
+      // 一级 sub-menu 分组标题
       > .ant-menu > .ant-menu-submenu > .ant-menu-submenu-title {
+        font-size: 11px;
         font-weight: 600;
-        font-size: 13px;
-        letter-spacing: 0;
-        margin-top: 2px;
-        color: rgba(0, 0, 0, 0.55);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #9ca3af;
+        padding: 8px 16px !important;
+        margin: 16px 8px 4px;
+        height: auto;
+        line-height: 1.4;
+
+        .anticon {
+          font-size: 14px;
+        }
       }
 
-      // 分组间加分隔线
+      // 分组间间距替代分隔线
       > .ant-menu > .ant-menu-submenu + .ant-menu-submenu {
-        margin-top: 4px;
+        margin-top: 8px;
         &::before {
-          content: '';
-          display: block;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, #e8e8e8 20%, #e8e8e8 80%, transparent);
-          margin: 4px 20px 8px;
+          display: none;
         }
       }
 
       // 一级直接菜单项
       > .ant-menu > .ant-menu-item {
         font-weight: 500;
-        font-size: 14px;
+        font-size: 13px;
+        margin: 2px 8px;
+        border-radius: 8px;
       }
 
-      // 菜单项 - 竖线选中指示器 + hover竖线
+      // ========== 菜单项 ==========
       .ant-menu-item {
-        border-radius: 0;
-        margin-right: 0;
+        height: 38px;
+        line-height: 38px;
+        border-radius: 8px;
+        margin: 2px 8px;
+        padding: 0 12px !important;
+        font-size: 13px;
+        font-weight: 450;
+        color: #5f6773;
         transition: all 0.15s ease;
 
+        // 去掉竖线指示器
         &::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 4px;
-          bottom: 4px;
-          width: 3px;
-          border-radius: 0 2px 2px 0;
-          background: transparent;
-          transition: background 0.15s ease;
+          display: none !important;
         }
 
-        &:hover::before {
-          background: rgba(58, 130, 248, 0.3);
+        &:hover {
+          background: #f7f8fa;
+          color: #1a1d23;
         }
 
         &.ant-menu-item-selected {
-          position: relative;
-          background: rgba(58, 130, 248, 0.06) !important;
-          color: #3a82f8 !important;
+          background: #eef4ff !important;
+          color: #4f8cff !important;
+          font-weight: 500;
 
-          &::before {
-            background: #3a82f8;
+          .anticon {
+            color: #4f8cff;
           }
         }
       }
 
+      // 子菜单标题
       .ant-menu-submenu-title {
-        border-radius: 0;
-        margin-right: 0;
+        height: 38px;
+        line-height: 38px;
+        border-radius: 8px;
+        margin: 2px 8px;
+        padding: 0 12px !important;
+        font-size: 13px;
+        color: #5f6773;
         transition: all 0.15s ease;
+
+        &:hover {
+          background: #f7f8fa;
+        }
       }
 
       // 二级子菜单内的项目
@@ -223,7 +265,7 @@
       }
     }
 
-    // 空状态引导
+    // ========== 空状态 ==========
     .sider-empty {
       flex: 1;
       display: flex;
@@ -235,30 +277,31 @@
 
       .sider-empty-icon {
         font-size: 40px;
-        color: rgba(0, 0, 0, 0.15);
+        color: rgba(0, 0, 0, 0.12);
         margin-bottom: 12px;
       }
 
       .sider-empty-text {
         font-size: 13px;
-        color: rgba(0, 0, 0, 0.35);
+        color: rgba(0, 0, 0, 0.25);
         text-align: center;
         margin: 0;
         line-height: 1.5;
       }
     }
 
-    // 底部用户卡片 - 微内阴影
+    // ========== 底部用户卡片 ==========
     .sider-user-card {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 12px 16px;
-      border-top: 1px solid #c0c0c0;
+      border-top: 1px solid #eef0f2;
       cursor: default;
       min-height: 52px;
-      transition: background-color 0.15s;
-      box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.03);
+      transition: background 0.15s ease;
+      background: transparent;
+      box-shadow: none;
 
       .ant-avatar {
         flex-shrink: 0;
@@ -280,7 +323,7 @@
       .user-card-name {
         font-size: 13px;
         font-weight: 500;
-        color: rgba(0, 0, 0, 0.75);
+        color: #1a1d23;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -289,7 +332,7 @@
 
       .user-card-role {
         font-size: 11px;
-        color: rgba(0, 0, 0, 0.35);
+        color: #9ca3af;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -298,12 +341,13 @@
       }
     }
 
+    // ========== 折叠状态 ==========
     &.ant-layout-sider-collapsed {
-      width: 72px !important;
-      max-width: 72px !important;
+      width: 64px !important;
+      max-width: 64px !important;
 
       .ant-layout-sider-trigger {
-        width: 72px !important;
+        width: 64px !important;
       }
 
       .logo {
@@ -318,13 +362,15 @@
       }
 
       .sider-menu-section .ant-menu-item {
-        margin-right: 0;
-        border-radius: 0;
+        margin: 2px 8px;
+        border-radius: 8px;
+        padding: 0 !important;
+        text-align: center;
       }
 
       .sider-menu-section .ant-menu-submenu-title {
-        margin-right: 0;
-        border-radius: 0;
+        margin: 2px 8px;
+        border-radius: 8px;
       }
 
       .sider-menu-section > .ant-menu > .ant-menu-submenu > .ant-menu-submenu-title,
@@ -333,23 +379,25 @@
       }
     }
 
+    // ========== 折叠触发器 ==========
     .ant-layout-sider-trigger {
-      width: 240px !important;
-      border-top: 1px solid #c0c0c0;
-      color: rgba(0, 0, 0, 0.45);
+      width: 220px !important;
+      border-top: 1px solid #eef0f2;
+      color: #9ca3af;
+      background: #f9fafb;
       transition: background 0.15s ease, color 0.15s ease;
 
       &:hover {
-        background: rgba(58, 130, 248, 0.04);
-        color: @primary-color;
+        background: #f7f8fa;
+        color: #4f8cff;
       }
     }
-
   }
 
-  .maint-content{
-    .ant-layout-content{
-      border-top: 1px solid #c0c0c0;
+  // ========== 主内容区 ==========
+  .maint-content {
+    .ant-layout-content {
+      border-top: 1px solid #eef0f2;
     }
   }
 
@@ -358,13 +406,14 @@
     padding: 0 50px 12px 50px;
   }
 
-  .ant-layout-header.collapsed{
-    .logo{
-      width: 48px;
-      .logo-img{
-        left: 22px;
+  // ========== 折叠时 Header ==========
+  .ant-layout-header.collapsed {
+    .logo {
+      width: 40px;
+      .logo-img {
+        left: 20px;
       }
-      .title{
+      .title {
         display: none;
       }
     }
@@ -373,25 +422,25 @@
   // ========== Light 主题 ==========
   &.layout-light {
     .ant-layout-header {
-      background: #fff;
-      color: rgba(0, 0, 0, 0.65);
+      background: rgba(255, 255, 255, 0.82);
+      color: #5f6773;
 
       .logo .title {
-        color: rgba(0, 0, 0, 0.85);
+        color: #1a1d23;
       }
 
       .right-menu {
-        color: rgba(0, 0, 0, 0.65);
+        color: #5f6773;
         .action .anticon {
-          color: rgba(0, 0, 0, 0.55);
+          color: #5f6773;
         }
       }
     }
 
     .ant-layout-sider {
-      background: #fafafa !important;
+      background: #f9fafb !important;
 
-      .ant-layout-sider-children{
+      .ant-layout-sider-children {
         height: 100%;
         position: relative;
         .ant-menu-inline, .ant-menu-vertical, .ant-menu-vertical-left {
@@ -400,7 +449,7 @@
       }
 
       .menu-collapse-item {
-        border-top-color: #c0c0c0;
+        border-top-color: #eef0f2;
       }
 
       .sider-empty {
@@ -413,28 +462,22 @@
       }
 
       > .ant-menu > .ant-menu-submenu > .ant-menu-submenu-title {
-        color: rgba(0, 0, 0, 0.55);
+        color: #9ca3af;
       }
 
       .sider-user-card {
-        border-top-color: #c0c0c0;
+        border-top-color: #eef0f2;
 
         .ant-avatar {
-          border-color: #c0c0c0;
+          border-color: #eef0f2;
         }
 
         .user-card-name {
-          color: rgba(0, 0, 0, 0.75);
+          color: #1a1d23;
         }
 
         .user-card-role {
-          color: rgba(0, 0, 0, 0.35);
-        }
-      }
-
-      .sider-menu-section .ant-menu-item {
-        &.ant-menu-item-selected::before {
-          background: #3a82f8;
+          color: #9ca3af;
         }
       }
     }
@@ -451,14 +494,13 @@
 
     .ant-layout-sider-trigger {
       background: transparent;
-      color: rgba(0, 0, 0, 0.45);
+      color: #9ca3af;
     }
   }
 
   // ========== Dark 主题 ==========
-  // (核心暗色样式由 theme-dark.less 控制，此处仅保留 layout 特有的覆盖)
   &.layout-dark {
-    .ant-layout-sider{
+    .ant-layout-sider {
       box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
     }
 
@@ -467,11 +509,7 @@
     }
   }
 
-  header {
-    .ant-menu {
-    }
-  }
-
+  // ========== 隐藏侧边栏 ==========
   &.hide {
     .ant-layout-sider {
       display: none;
@@ -482,16 +520,18 @@
     }
   }
 
+  // ========== 菜单折叠按钮 ==========
   .menu-collapse-item {
     margin-top: 8px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #eef0f2;
+    border-radius: 8px;
 
     &.ant-menu-item-selected {
       background: transparent !important;
     }
 
     &:hover {
-      color: #3a82f8;
+      color: #4f8cff;
     }
 
     .anticon {
@@ -500,10 +540,12 @@
   }
 }
 
+// ========== 下拉菜单 ==========
 .middle-menu {
   padding: 4px 0;
 
-  .ant-dropdown-menu-item-divider, .ant-dropdown-menu-submenu-title-divider {
+  .ant-dropdown-menu-item-divider,
+  .ant-dropdown-menu-submenu-title-divider {
     margin: 4px 0;
   }
 

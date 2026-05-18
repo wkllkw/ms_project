@@ -1,26 +1,6 @@
 <template>
     <div class="house-index notice-enhanced">
         <wrapper-content>
-            <!-- 通知分类 Tab -->
-            <a-tabs v-model="activeTab" @change="onTabChange" class="notice-tabs">
-                <a-tab-pane key="all">
-                    <span slot="tab">
-                        <a-icon type="bell" /> 全部通知
-                        <a-badge v-if="unreadTotal > 0" :count="unreadTotal" :numberStyle="{fontSize:'10px'}" />
-                    </span>
-                </a-tab-pane>
-                <a-tab-pane key="task">
-                    <span slot="tab">
-                        <a-icon type="check-square" /> 任务通知
-                    </span>
-                </a-tab-pane>
-                <a-tab-pane key="system">
-                    <span slot="tab">
-                        <a-icon type="notification" /> 系统公告
-                    </span>
-                </a-tab-pane>
-            </a-tabs>
-
             <div class="page-search">
                 <a-form
                         layout="inline"
@@ -73,7 +53,9 @@
                     </div>
                 </template>
                 <template slot="action" slot-scope="text,record,index">
-                    <a @click.stop="rowClick(record,'del')">删除</a>
+                    <span class="table-action-btn" @click.stop="rowClick(record,'del')">
+                        <a-icon type="delete" />
+                    </span>
                 </template>
             </a-table>
 
@@ -140,27 +122,36 @@
                 loading: true,
                 searchForm: {},
                 searchLoading: false,
-                activeTab: 'all',
+                activeTab: 'task',
                 unreadTotal: 0,
                 detailVisible: false,
                 currentNotice: {},
             }
         },
         created() {
-            this.init();
+            this.loadByRoute();
+        },
+        watch: {
+            // 同一组件切换路由时（/notify/notice ↔ /notify/system），Vue 复用实例，
+            // created 不会重复触发，需要 watch $route 来重新加载数据
+            '$route.path'() {
+                this.loadByRoute();
+            }
         },
         methods: {
+            loadByRoute() {
+                this.activeTab = this.$route.path === '/notify/system' ? 'system' : 'task';
+                this.pagination.page = 1;
+                this.init();
+            },
             init() {
                 let app = this;
                 if (app.activeTab === 'task') {
                     app.requestData.type = 'notice';
                     app.requestData.action = 'task';
-                } else if (app.activeTab === 'system') {
-                    app.requestData.type = 'system';
-                    delete app.requestData.action;
                 } else {
-                    // 全部：不传 type，由后端返回所有通知和系统公告
-                    app.requestData.type = 'all';
+                    // 系统消息
+                    app.requestData.type = 'system';
                     delete app.requestData.action;
                 }
                 app.loading = true;
@@ -172,11 +163,6 @@
                     // 计算未读数
                     app.unreadTotal = (res.data.list || []).filter(item => !item.is_read).length;
                 });
-            },
-            onTabChange(key) {
-                this.activeTab = key;
-                this.pagination.page = 1;
-                this.init();
             },
             onSelectChange(selectedRowKeys) {
                 this.selectedRowKeys = selectedRowKeys
@@ -215,7 +201,13 @@
                         projectCode = sendData.projectCode || '';
                     } catch (e) {}
                     if (taskCode && projectCode) {
-                        this.$router.push('/project/space/task/' + projectCode + '/detail/' + taskCode).catch(() => {});
+                        const routeUrl = '/project/space/task/' + projectCode + '/detail/' + taskCode;
+                        // task:mention 和 task:comment 通知直接滚动到评论区
+                        if (record.action === 'task:mention' || record.action === 'task:comment') {
+                            this.$router.push({path: routeUrl, query: {scrollTo: 'comment'}}).catch(() => {});
+                        } else {
+                            this.$router.push(routeUrl).catch(() => {});
+                        }
                         return;
                     }
                     if (taskCode) {
@@ -317,73 +309,175 @@
 </script>
 <style lang="less" scoped>
     .notice-enhanced {
-        .notice-tabs {
-            margin-bottom: 16px;
+        .action {
+            padding: 8px 0 20px;
 
-            .ant-tabs-tab {
-                font-size: 14px;
+            .ant-btn {
+                height: 34px;
+                border-radius: 8px;
+                padding: 0 14px;
+                font-size: 13px;
                 font-weight: 500;
-            }
 
-            .ant-badge {
-                margin-left: 4px;
+                &:not(.ant-btn-primary) {
+                    border-color: #e4e7eb;
+                    color: #5f6773;
+                    &:hover {
+                        border-color: #4f8cff;
+                        color: #4f8cff;
+                        background: #eef4ff;
+                    }
+                }
+
+                &.ant-btn-danger {
+                    color: #ef4444;
+                    border-color: transparent;
+                    &:hover {
+                        background: rgba(239, 68, 68, 0.06);
+                        color: #ef4444;
+                    }
+                }
             }
         }
 
         .notice-title-cell {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             cursor: pointer;
+            font-weight: 450;
+
+            .ant-badge-status {
+                .ant-badge-status-dot {
+                    width: 6px;
+                    height: 6px;
+                }
+            }
 
             .unread-title {
                 font-weight: 600;
-                color: rgba(0, 0, 0, 0.85);
+                color: #1a1d23;
+            }
+        }
+
+        // 表格操作图标按钮
+        /deep/ .ant-table {
+            border: none;
+            border-radius: 0;
+            overflow: visible;
+
+            .ant-table-thead > tr > th {
+                background: #f7f8fa;
+                color: #9ca3af;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+                padding: 10px 16px;
+                border-bottom: 1px solid #eef0f2;
+                border-top: none;
+            }
+
+            .ant-table-tbody > tr > td {
+                padding: 14px 16px;
+                font-size: 13px;
+                color: #5f6773;
+                border-bottom: 1px solid #eef0f2;
+                transition: background 0.12s ease;
+            }
+
+            .ant-table-tbody > tr:hover > td {
+                background: #f7f8fa !important;
+            }
+        }
+
+        // 未读行
+        /deep/ .notice-unread {
+            background: rgba(79, 140, 255, 0.03) !important;
+
+            > td:first-child {
+                position: relative;
+                &::after {
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 4px;
+                    height: 4px;
+                    border-radius: 50%;
+                    background: #4f8cff;
+                }
+            }
+
+            &:hover > td {
+                background: #f7f8fa !important;
+            }
+        }
+
+        /deep/ .notice-read {
+            td {
+                color: #9ca3af;
             }
         }
 
         .notice-empty {
             text-align: center;
-            padding: 60px 0;
-            color: #999;
+            padding: 80px 24px;
+
+            .anticon {
+                color: #d4d7dc;
+            }
 
             p {
-                margin-top: 12px;
+                margin-top: 16px;
                 font-size: 14px;
+                color: #9ca3af;
+                font-weight: 450;
+            }
+        }
+
+        .table-action-btn {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            color: #9ca3af;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            font-size: 14px;
+
+            &:hover {
+                background: #f7f8fa;
+                color: #ef4444;
             }
         }
     }
 
-    // 未读行高亮
-    /deep/ .notice-unread {
-        background-color: #f0f7ff;
-
-        &:hover > td {
-            background-color: #e6f0fa !important;
-        }
-    }
-
-    /deep/ .notice-read {
-        td {
-            color: rgba(0, 0, 0, 0.45);
-        }
-    }
-
+    // ========== 详情弹窗 ==========
     .notice-detail {
         .notice-detail-time {
-            color: #999;
-            font-size: 13px;
-            margin-bottom: 16px;
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .notice-detail-content {
             font-size: 14px;
             line-height: 1.8;
-            color: #333;
+            color: #1a1d23;
+            background: #f7f8fa;
+            border-radius: 8px;
+            padding: 16px;
         }
 
         .notice-detail-actions {
-            margin-top: 20px;
+            margin-top: 24px;
             text-align: right;
         }
     }

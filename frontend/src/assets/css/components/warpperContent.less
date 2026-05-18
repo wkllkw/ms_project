@@ -1,67 +1,74 @@
+// ============================================================
+// FlowHub Modern Content Wrapper v2.0
+// 12px卡片圆角 + 新阴影 + 弱化边框
+// ============================================================
+
 .page-title {
-  font-size: 17px;
-  color: rgba(0, 0, 0, 0.85);
+  font-size: 18px;
+  color: #1a1d23;
   line-height: 32px;
   padding-bottom: 4px;
   font-weight: 600;
 }
+
 .content-title {
   font-size: 17px;
-  color: rgba(0, 0, 0, 0.75);
+  color: #1a1d23;
   line-height: 32px;
   padding-bottom: 12px;
   margin-bottom: 16px;
   min-height: 48px;
-  font-weight: 400;
-  border-bottom: 1px solid #f0f0f0;
+  font-weight: 500;
+  border-bottom: 1px solid #eef0f2;
 }
 
 .content-action {
   float: right;
 }
 
-.content-action + .page-title {
-}
-.page-header{
-  background: #fff;
-  padding: 16px 28px 0;
-  border-bottom: 1px solid #f0f0f0;
-  .breadcrumb{
+// ========== 页面头 ==========
+.page-header {
+  background: #ffffff;
+  padding: 20px 28px 0;
+  border-bottom: 1px solid #eef0f2;
+
+  .breadcrumb {
     margin-bottom: 16px;
   }
-  .detail{
+
+  .detail {
     display: flex;
     .row {
       display: flex;
       width: 100%;
     }
-    .main{
+    .main {
       width: 100%;
       flex: 0 1 auto;
-      .title{
+      .title {
         flex: auto;
         font-size: 18px;
         font-weight: 600;
-        color: rgba(0,0,0,.85);
+        color: #1a1d23;
         margin-bottom: 16px;
       }
-      .logo{
+      .logo {
         width: 28px;
         height: 28px;
         border-radius: 4px;
         margin-right: 16px;
       }
-      .content{
+      .content {
         margin-bottom: 16px;
         flex: auto;
       }
-      .extra{
+      .extra {
         flex: 0 1 auto;
         margin-left: 88px;
         min-width: 242px;
         text-align: right;
       }
-      .action{
+      .action {
         margin-left: 56px;
         min-width: 266px;
         flex: 0 1 auto;
@@ -70,34 +77,89 @@
     }
   }
 }
-.page-header-none{
+
+.page-header-none {
   padding: 0;
   border-bottom: none;
 }
 
+// ========== 主内容卡片 ==========
 .wrapper-main {
   margin: 24px;
-  padding: 24px 0 12px 24px;
-  background: rgb(255, 255, 255);
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #eef0f2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
+// ========== 内容区 ==========
 .wrapper-content {
   width: 100%;
   padding-right: 28px;
-  transition: opacity 0.2s;
-  .action{
+  transition: opacity 0.2s ease;
+
+  .action {
     padding-bottom: 12px;
     line-height: 3;
   }
 }
 
-.layout-content {
-}
-
+// ========== 搜索区域 ==========
 .page-search {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  background: #f7f8fa;
+  border-radius: 10px;
+  padding: 16px 20px;
+  border: 1px solid #eef0f2;
+
+  .ant-form-item {
+    margin-bottom: 0;
+
+    .ant-form-item-label {
+      font-size: 12px;
+      color: #9ca3af;
+      font-weight: 500;
+      line-height: 32px;
+
+      label {
+        color: #9ca3af;
+      }
+    }
+  }
+
+  .ant-input {
+    height: 36px;
+    border-radius: 8px;
+    border-color: #e4e7eb;
+    background: #ffffff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+      border-color: #bdc4cd;
+    }
+
+    &:focus {
+      border-color: #4f8cff;
+      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.08);
+    }
+  }
+
+  .ant-calendar-picker-input {
+    height: 36px;
+    border-radius: 8px;
+    border-color: #e4e7eb;
+  }
+
+  .ant-btn-primary {
+    height: 36px;
+    border-radius: 8px;
+    padding: 0 20px;
+    font-weight: 500;
+  }
 }
 
+// ========== 有页面头的内容 ==========
 .has-header-content .wrapper-content {
   padding: 72px 24px 0 260px;
   margin-top: 0;
@@ -105,14 +167,14 @@
 }
 
 .has-header-content .layout-content {
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
+  border: 1px solid #eef0f2;
+  border-radius: 12px;
   padding: 20px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
   transition: border-color 0.2s ease, box-shadow 0.25s ease;
 
   &:hover {
-    border-color: rgba(58, 130, 248, 0.2);
+    border-color: rgba(79, 140, 255, 0.2);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   }
 }
@@ -127,7 +189,7 @@
   width: 100%;
   line-height: 52px;
   overflow: hidden;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #eef0f2;
   margin-bottom: 24px;
 }
 

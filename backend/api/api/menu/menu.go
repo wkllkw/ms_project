@@ -8,6 +8,7 @@ import (
 	"test.com/project-api/internal/authz"
 	"test.com/project-api/internal/database/gorms"
 	"test.com/project-api/internal/menus"
+	"test.com/project-api/pkg/codecs"
 	projectMenu "test.com/project-api/pkg/model/menu"
 	common "test.com/project-common"
 )
@@ -31,10 +32,18 @@ func (h *HandlerMenu) menu(c *gin.Context) {
 		return
 	}
 
-	// 根据用户角色过滤菜单
+	// 根据用户角色过滤菜单（合并项目级和组织级权限）
 	memberId := c.GetInt64("memberId")
 	db := gorms.GetDB()
-	nodes := authz.GetUserNodes(db, memberId)
+
+	// 获取当前组织编码
+	orgCodeStr, _ := c.Get("organizationCode")
+	var orgCode int64
+	if orgStr, ok := orgCodeStr.(string); ok && orgStr != "" {
+		orgCode, _ = codecs.DecryptInt64(orgStr)
+	}
+
+	nodes := authz.GetAllNodes(db, memberId, orgCode)
 	allowedNodes := make(map[string]bool, len(nodes))
 	for _, n := range nodes {
 		allowedNodes[n] = true

@@ -662,9 +662,10 @@ func (h *HandlerTask) taskDone(c *gin.Context) {
 				action = "task:redo"
 			}
 			sendTaskNotifyToUser(t.AssignTo, action, gin.H{
-				"taskCode": taskCode,
-				"taskName": t.Name,
-				"done":     done,
+				"taskCode":    taskCode,
+				"projectCode": codecs.EncryptInt64(t.ProjectCode),
+				"taskName":    t.Name,
+				"done":        done,
 			})
 		}
 	}
@@ -1904,29 +1905,25 @@ func sendTaskNotifyToUser(userId int64, action string, data interface{}) {
 	switch action {
 	case "task:mention":
 		title = "你在评论中被提及"
-		if d, ok := data.(gin.H); ok {
-			if c, _ := d["comment"].(string); c != "" {
-				contentText = c
-			}
-		}
+		contentText = extractComment(data)
 	case "task:comment":
 		title = "任务有新评论"
-		if d, ok := data.(gin.H); ok {
-			if c, _ := d["comment"].(string); c != "" {
-				contentText = c
-			}
-		}
+		contentText = extractComment(data)
 	case "task:done":
 		title = "任务已完成"
+		contentText = extractTaskName(data)
 	case "task:redo":
 		title = "任务被重做"
+		contentText = extractTaskName(data)
 	case "task:assign":
 		title = "任务已指派给你"
+		contentText = extractTaskName(data)
 	}
-	dataJSON, _ := json.Marshal(data)
 	if contentText == "" {
+		dataJSON, _ := json.Marshal(data)
 		contentText = string(dataJSON)
 	}
+	dataJSON, _ := json.Marshal(data)
 	_ = gorms.GetDB().Create(&notifyRow{
 		MemberCode: userId,
 		Title:      title,
@@ -1937,6 +1934,36 @@ func sendTaskNotifyToUser(userId int64, action string, data interface{}) {
 		Action:     action,
 		SendData:   string(dataJSON),
 	}).Error
+}
+
+// extractComment 从 data 中提取评论内容（兼容 gin.H 和 map[string]interface{}）
+func extractComment(data interface{}) string {
+	switch d := data.(type) {
+	case gin.H:
+		if c, _ := d["comment"].(string); c != "" {
+			return c
+		}
+	case map[string]interface{}:
+		if c, _ := d["comment"].(string); c != "" {
+			return c
+		}
+	}
+	return ""
+}
+
+// extractTaskName 从 data 中提取任务名称（兼容 gin.H 和 map[string]interface{}）
+func extractTaskName(data interface{}) string {
+	switch d := data.(type) {
+	case gin.H:
+		if n, _ := d["taskName"].(string); n != "" {
+			return n
+		}
+	case map[string]interface{}:
+		if n, _ := d["taskName"].(string); n != "" {
+			return n
+		}
+	}
+	return ""
 }
 
 // workflowRuleRow 工作流规则数据行
