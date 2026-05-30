@@ -44,6 +44,11 @@ func New() *GormConn {
 	return &GormConn{db: GetDB()}
 }
 
+// NewWithDB 使用外部传入的 DB 创建连接（用于测试注入）
+func NewWithDB(db *gorm.DB) *GormConn {
+	return &GormConn{db: db}
+}
+
 func NewTran() *GormConn {
 	return &GormConn{db: GetDB(), tx: GetDB()}
 }

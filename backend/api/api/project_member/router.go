@@ -24,10 +24,8 @@ func (*RouterProjectMember) Route(r *gin.Engine) {
 	group.POST("/project_member/searchInviteMember", h.searchInviteMember)
 	group.POST("/project_member/_listForInvite", h.listForInvite)
 	group.POST("/project_member/_joinByInviteLink", h.joinByInviteLink)
-	// 成员邀请/移除：需要 project.member 节点权限
-	memberGroup := group.Group("")
-	memberGroup.Use(midd.NodeVerify("project.member"))
-	memberGroup.POST("/project_member/inviteMember", h.inviteMember)
-	memberGroup.POST("/project_member/removeMember", h.removeMember)
+	// 成员邀请/移除：handler 内部有 IsProjectMember/IsProjectOwner 数据隔离校验
+	group.POST("/project_member/inviteMember", h.inviteMember)
+	group.POST("/project_member/removeMember", h.removeMember)
 }
 

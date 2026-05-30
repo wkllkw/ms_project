@@ -1719,7 +1719,12 @@
                 return false;
             },
             createTask() {
-                let obj = {pcode: this.code, name: this.childTaskName};
+                let obj = {
+                    pcode: this.code,
+                    name: this.childTaskName,
+                    projectCode: this.projectCodeCurrent,
+                    stageCode: this.task.stage_code
+                };
                 if (this.childExecutor) {
                     obj.assign_to = this.childExecutor.code;
                 }
@@ -1734,7 +1739,7 @@
                 });
             },
             getChildTasks() {
-                getTasks({pcode: this.code, pageSize: 100, deleted: 0}).then((res) => {
+                getTasks({pcode: this.code, projectCode: this.projectCodeCurrent, pageSize: 100, deleted: 0}).then((res) => {
                     let list = [];
                     const dataList = (res.data && res.data.list) || [];
                     dataList.forEach(v => {

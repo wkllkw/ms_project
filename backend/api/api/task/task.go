@@ -22,10 +22,29 @@ import (
 )
 
 type HandlerTask struct {
+	dbOverride *gorm.DB // 测试时可注入外部DB，nil时使用h.db()
 }
 
 func New() *HandlerTask {
 	return &HandlerTask{}
+}
+
+// NewWithDB 创建可注入数据库连接的 Handler（用于测试）
+func NewWithDB(db *gorm.DB) *HandlerTask {
+	return &HandlerTask{dbOverride: db}
+}
+
+// db 返回当前使用的数据库连接（原生 *gorm.DB）
+func (h *HandlerTask) db() *gorm.DB {
+	if h.dbOverride != nil {
+		return h.dbOverride
+	}
+	return gorms.GetDB()
+}
+
+// dbConn 返回 GormConn 包装（用于 taskToResponse 等需要 GormConn 的场景）
+func (h *HandlerTask) dbConn() *gorms.GormConn {
+	return gorms.NewWithDB(h.db())
 }
 
 type taskRow struct {
@@ -293,7 +312,7 @@ func (h *HandlerTask) list(c *gin.Context) {
 	page.Bind(c)
 	projectCode := c.PostForm("projectCode")
 	deleted := c.PostForm("deleted")
-	db := gorms.New()
+	db := h.dbConn()
 	session := db.Session(c.Request.Context())
 	query := session.Model(&taskRow{})
 	orgCode := orgCodeFromContext(c)
@@ -328,6 +347,13 @@ func (h *HandlerTask) list(c *gin.Context) {
 		}
 		query = query.Where("project_code IN (?)", subQuery)
 	}
+	// pcode: 父任务加密ID，用于查询子任务
+	if pcode := c.PostForm("pcode"); pcode != "" {
+		pid, err := codecs.DecryptInt64(pcode)
+		if err == nil {
+			query = query.Where("parent_task_id=?", pid)
+		}
+	}
 	if deleted == "1" {
 		query = query.Where("deleted=1")
 	} else {
@@ -361,7 +387,7 @@ func (h *HandlerTask) selfList(c *gin.Context) {
 		}
 	}
 	orgCode := orgCodeFromContext(c)
-	db := gorms.New()
+	db := h.dbConn()
 	session := db.Session(c.Request.Context())
 	query := session.Model(&taskRow{}).Where("deleted=0").Where("assign_to=? or owner_code=? or member_code=?", memberId, memberId, memberId)
 	// 组织过滤：只显示当前组织下的任务
@@ -429,7 +455,7 @@ func (h *HandlerTask) save(c *gin.Context) {
 	}
 	// 权限校验：只有项目成员才能创建任务
 	memberId := c.GetInt64("memberId")
-	db := gorms.GetDB()
+	db := h.db()
 	if !authz.IsProjectMember(db, memberId, pid) {
 		c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
 		return
@@ -438,28 +464,48 @@ func (h *HandlerTask) save(c *gin.Context) {
 	if assignToCode != "" {
 		assignTo, _ = codecs.DecryptInt64(assignToCode)
 	}
+	var endTime int64
+	if v := c.PostForm("end_time"); v != "" {
+		if t, err := time.ParseInLocation("2006-01-02 15:04", v, time.Local); err == nil {
+			endTime = t.UnixMilli()
+		}
+	}
+	var beginTime int64
+	if v := c.PostForm("begin_time"); v != "" {
+		if t, err := time.ParseInLocation("2006-01-02 15:04", v, time.Local); err == nil {
+			beginTime = t.UnixMilli()
+		}
+	}
+	// pcode: 父任务加密ID，用于创建子任务
+	var parentTaskId int64
+	if v := c.PostForm("pcode"); v != "" {
+		parentTaskId, _ = codecs.DecryptInt64(v)
+	}
 	var maxSort int
 	_ = db.Model(&taskRow{}).Where("stage_code=? and deleted=0", sid).Select("coalesce(max(sort),0)").Scan(&maxSort).Error
 	row := &taskRow{
-		ProjectCode: pid,
-		Name:        name,
-		Description: c.PostForm("description"),
-		Priority:    0,
-		CreateTime:  time.Now().UnixMilli(),
-		MemberCode:  memberId,
-		OwnerCode:   memberId,
-		AssignTo:    assignTo,
-		StageCode:   sid,
-		Sort:        maxSort + 1,
-		Deleted:     0,
-		Private:     0,
-		Done:        0,
+		ProjectCode:  pid,
+		Name:         name,
+		Description:  c.PostForm("description"),
+		Priority:     0,
+		BeginTime:    beginTime,
+		EndTime:      endTime,
+		ParentTaskId: parentTaskId,
+		CreateTime:   time.Now().UnixMilli(),
+		MemberCode:   memberId,
+		OwnerCode:    memberId,
+		AssignTo:     assignTo,
+		StageCode:    sid,
+		Sort:         maxSort + 1,
+		Deleted:      0,
+		Private:      0,
+		Done:         0,
 	}
 	if err := db.Create(row).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "创建失败"))
 		return
 	}
-	c.JSON(http.StatusOK, result.Success(taskToResponse(gorms.New(), c, *row)))
+	c.JSON(http.StatusOK, result.Success(taskToResponse(h.dbConn(), c, *row)))
 }
 
 // @Summary 编辑任务
@@ -517,13 +563,35 @@ func (h *HandlerTask) edit(c *gin.Context) {
 			updates["assign_to"] = a
 		}
 	}
+	// begin_time: 前端传 "YYYY-MM-DD HH:mm" 格式字符串，转为 Unix 毫秒时间戳
+	if beginTimeVals, ok := c.Request.PostForm["begin_time"]; ok {
+		beginTimeStr := beginTimeVals[0]
+		if beginTimeStr != "" {
+			if t, err := time.ParseInLocation("2006-01-02 15:04", beginTimeStr, time.Local); err == nil {
+				updates["begin_time"] = t.UnixMilli()
+			}
+		} else {
+			updates["begin_time"] = int64(0)
+		}
+	}
+	// end_time: 前端传 "YYYY-MM-DD HH:mm" 格式字符串，转为 Unix 毫秒时间戳
+	if endTimeVals, ok := c.Request.PostForm["end_time"]; ok {
+		endTimeStr := endTimeVals[0]
+		if endTimeStr != "" {
+			if t, err := time.ParseInLocation("2006-01-02 15:04", endTimeStr, time.Local); err == nil {
+				updates["end_time"] = t.UnixMilli()
+			}
+		} else {
+			updates["end_time"] = int64(0)
+		}
+	}
 	// work_time: 前端传小时，后端转分钟存储
 	if v := c.PostForm("work_time"); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
 			updates["work_time"] = int64(f * 60)
 		}
 	}
-	db := gorms.GetDB()
+	db := h.db()
 	if err := db.Model(&taskRow{}).Where("id=?", id).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "更新失败"))
 		return
@@ -552,7 +620,7 @@ func (h *HandlerTask) read(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "taskCode无效"))
 		return
 	}
-	db := gorms.New()
+	db := h.dbConn()
 	var row taskRow
 	if err := db.Session(c.Request.Context()).Where("id=?", id).First(&row).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
@@ -617,7 +685,7 @@ func (h *HandlerTask) taskDone(c *gin.Context) {
 	if doneStr == "1" || doneStr == "true" {
 		done = 1
 	}
-	db := gorms.GetDB()
+	db := h.db()
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
 	memberId := c.GetInt64("memberId")
 	var t taskRow
@@ -691,7 +759,7 @@ func (h *HandlerTask) recycle(c *gin.Context) {
 		return
 	}
 
-	if err := gorms.GetDB().Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"deleted": 1}).Error; err != nil {
+	if err := h.db().Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"deleted": 1}).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "回收失败"))
 		return
 	}
@@ -709,7 +777,7 @@ func (h *HandlerTask) recovery(c *gin.Context) {
 		return
 	}
 
-	if err := gorms.GetDB().Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"deleted": 0}).Error; err != nil {
+	if err := h.db().Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"deleted": 0}).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "恢复失败"))
 		return
 	}
@@ -727,7 +795,7 @@ func (h *HandlerTask) del(c *gin.Context) {
 		return
 	}
 
-	if err := gorms.GetDB().Where("id=?", id).Delete(&taskRow{}).Error; err != nil {
+	if err := h.db().Where("id=?", id).Delete(&taskRow{}).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "删除失败"))
 		return
 	}
@@ -736,7 +804,7 @@ func (h *HandlerTask) del(c *gin.Context) {
 
 func (h *HandlerTask) recycleBatch(c *gin.Context) {
 	result := &common.Result{}
-	db := gorms.GetDB().WithContext(c.Request.Context())
+	db := h.db().WithContext(c.Request.Context())
 	raw := c.PostForm("taskCodes")
 	var codes []string
 	_ = json.Unmarshal([]byte(raw), &codes)
@@ -790,7 +858,7 @@ func (h *HandlerTask) batchDone(c *gin.Context) {
 	if doneStr == "1" || doneStr == "true" {
 		done = 1
 	}
-	db := gorms.GetDB()
+	db := h.db()
 	batchUpdates := map[string]any{"done": done}
 	if done == 1 {
 		batchUpdates["done_time"] = time.Now().UnixMilli()
@@ -837,7 +905,7 @@ func (h *HandlerTask) batchAssignTask(c *gin.Context) {
 	var codes []string
 	_ = json.Unmarshal([]byte(raw), &codes)
 	memberId := c.GetInt64("memberId")
-	db := gorms.GetDB()
+	db := h.db()
 	ids := make([]int64, 0, len(codes))
 	for _, code := range codes {
 		id, err := codecs.DecryptInt64(code)
@@ -857,7 +925,7 @@ func (h *HandlerTask) batchAssignTask(c *gin.Context) {
 		return
 	}
 	if len(ids) > 0 {
-		_ = gorms.GetDB().Model(&taskRow{}).Where("id in ?", ids).Updates(map[string]any{"assign_to": execId}).Error
+		_ = h.db().Model(&taskRow{}).Where("id in ?", ids).Updates(map[string]any{"assign_to": execId}).Error
 	}
 	c.JSON(http.StatusOK, result.Success([]int{}))
 }
@@ -872,7 +940,7 @@ func (h *HandlerTask) setPrivate(c *gin.Context) {
 		return
 	}
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
-	db := gorms.GetDB()
+	db := h.db()
 	memberId := c.GetInt64("memberId")
 	var t taskRow
 	if err := db.Where("id=?", id).First(&t).Error; err != nil {
@@ -901,7 +969,7 @@ func (h *HandlerTask) like(c *gin.Context) {
 		return
 	}
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
-	db := gorms.GetDB()
+	db := h.db()
 	memberId := c.GetInt64("memberId")
 	var t taskRow
 	if err := db.Where("id=?", id).First(&t).Error; err != nil {
@@ -934,7 +1002,7 @@ func (h *HandlerTask) star(c *gin.Context) {
 		return
 	}
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
-	db := gorms.GetDB()
+	db := h.db()
 	memberId := c.GetInt64("memberId")
 	var t taskRow
 	if err := db.Where("id=?", id).First(&t).Error; err != nil {
@@ -975,7 +1043,7 @@ func (h *HandlerTask) createComment(c *gin.Context) {
 		return
 	}
 	memberId := c.GetInt64("memberId")
-	db := gorms.GetDB()
+	db := h.db()
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
 	var t taskRow
 	if err := db.Where("id=?", id).First(&t).Error; err != nil {
@@ -1065,7 +1133,7 @@ func (h *HandlerTask) sort(c *gin.Context) {
 	if nextTaskCode != "" {
 		nextId, _ = codecs.DecryptInt64(nextTaskCode)
 	}
-	db := gorms.GetDB()
+	db := h.db()
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
 	memberId := c.GetInt64("memberId")
 	var moved taskRow
@@ -1174,7 +1242,7 @@ func (h *HandlerTask) assignTask(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "executorCode无效"))
 		return
 	}
-	if err := gorms.GetDB().Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"assign_to": execId}).Error; err != nil {
+	if err := h.db().Model(&taskRow{}).Where("id=?", id).Updates(map[string]any{"assign_to": execId}).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(500, "指派失败"))
 		return
 	}
@@ -1194,7 +1262,7 @@ func (h *HandlerTask) taskSources(c *gin.Context) {
 		taskId, decErr := codecs.DecryptInt64(taskCode)
 		if decErr == nil && taskId != 0 {
 			var task taskRow
-			_ = gorms.GetDB().Select("project_code").Where("id=?", taskId).First(&task).Error
+			_ = h.db().Select("project_code").Where("id=?", taskId).First(&task).Error
 			pid = task.ProjectCode
 		}
 	} else if projectCode != "" {
@@ -1212,7 +1280,7 @@ func (h *HandlerTask) taskSources(c *gin.Context) {
 
 	// 数据隔离：检查当前用户是否是项目成员
 	memberId := c.GetInt64("memberId")
-	db := gorms.GetDB().WithContext(c.Request.Context())
+	db := h.db().WithContext(c.Request.Context())
 	if !authz.IsProjectMember(db, memberId, pid) {
 		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
 		return
@@ -1259,11 +1327,11 @@ func (h *HandlerTask) getListByTaskTag(c *gin.Context) {
 	}
 	// 数据隔离：检查当前用户是否是项目成员
 	memberId := c.GetInt64("memberId")
-	if !authz.IsProjectMember(gorms.GetDB(), memberId, pid) {
+	if !authz.IsProjectMember(h.db(), memberId, pid) {
 		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
 		return
 	}
-	db := gorms.New()
+	db := h.dbConn()
 	session := db.Session(c.Request.Context())
 	query := session.Table("ms_task t").
 		Joins("join ms_task_tag_rel r on r.task_id=t.id").
@@ -1290,7 +1358,7 @@ func (h *HandlerTask) taskToTags(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "taskCode无效"))
 		return
 	}
-	db := gorms.GetDB().WithContext(c.Request.Context())
+	db := h.db().WithContext(c.Request.Context())
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
 	memberId := c.GetInt64("memberId")
 	var t taskRow
@@ -1337,7 +1405,7 @@ func (h *HandlerTask) setTag(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "tagCode无效"))
 		return
 	}
-	db := gorms.GetDB()
+	db := h.db()
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
 	memberId := c.GetInt64("memberId")
 	var t taskRow
@@ -1372,7 +1440,7 @@ func (h *HandlerTask) dateTotalForProject(c *gin.Context) {
 	}
 	// 数据隔离：检查当前用户是否是项目成员
 	memberId := c.GetInt64("memberId")
-	db := gorms.GetDB().WithContext(c.Request.Context())
+	db := h.db().WithContext(c.Request.Context())
 	if !authz.IsProjectMember(db, memberId, pid) {
 		c.JSON(http.StatusOK, result.Fail(403, "无权限访问此项目"))
 		return
@@ -1408,7 +1476,7 @@ func (h *HandlerTask) taskLog(c *gin.Context) {
 	projectCode := c.PostForm("projectCode")
 	onlyComment := c.PostForm("comment")
 	showAll := c.PostForm("all")
-	db := gorms.GetDB().WithContext(c.Request.Context())
+	db := h.db().WithContext(c.Request.Context())
 	query := db.Model(&taskLogRow{})
 	memberId := c.GetInt64("memberId")
 	if taskCode != "" {
@@ -1537,7 +1605,7 @@ func (h *HandlerTask) taskWorkTimeList(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "taskCode无效"))
 		return
 	}
-	db := gorms.GetDB()
+	db := h.db()
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
 	memberId := c.GetInt64("memberId")
 	var t taskRow
@@ -1596,7 +1664,7 @@ func (h *HandlerTask) saveTaskWorkTime(c *gin.Context) {
 	}
 	memberId := c.GetInt64("memberId")
 	// 数据隔离：检查当前用户是否是任务所属项目的成员
-	db := gorms.GetDB()
+	db := h.db()
 	var t taskRow
 	if err := db.Where("id=?", id).First(&t).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(404, "任务不存在"))
@@ -1637,7 +1705,7 @@ func (h *HandlerTask) saveTaskWorkTime(c *gin.Context) {
 		Remark:     c.PostForm("remark"),
 		CreateTime: time.Now().UnixMilli(),
 	}
-	_ = gorms.GetDB().Create(row).Error
+	_ = h.db().Create(row).Error
 	c.JSON(http.StatusOK, result.Success(row))
 }
 
@@ -1654,7 +1722,7 @@ func (h *HandlerTask) editTaskWorkTime(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "id无效"))
 		return
 	}
-	db := gorms.GetDB()
+	db := h.db()
 	// 数据隔离：检查当前用户是否是工时关联任务所属项目的成员
 	memberId := c.GetInt64("memberId")
 	var wt taskWorkTimeRow
@@ -1724,7 +1792,7 @@ func (h *HandlerTask) delTaskWorkTime(c *gin.Context) {
 		c.JSON(http.StatusOK, result.Fail(400, "code无效"))
 		return
 	}
-	db := gorms.GetDB()
+	db := h.db()
 	// 数据隔离：检查当前用户是否是工时关联任务所属项目的成员
 	memberId := c.GetInt64("memberId")
 	var wt taskWorkTimeRow
@@ -1781,7 +1849,7 @@ func (h *HandlerTask) uploadFile(c *gin.Context) {
 
 	// 数据隔离：检查当前用户是否是项目成员
 	if pid != 0 {
-		db := gorms.GetDB()
+		db := h.db()
 		if !authz.IsProjectMember(db, memberId, pid) {
 			c.JSON(http.StatusOK, result.Fail(403, "无权限操作此项目"))
 			return
@@ -1835,7 +1903,7 @@ func (h *HandlerTask) uploadFile(c *gin.Context) {
 		EventContent: "上传文件: " + header.Filename,
 		CreateTime:   time.Now().UnixMilli(),
 	}
-	_ = gorms.GetDB().Create(row).Error
+	_ = h.db().Create(row).Error
 
 	c.JSON(http.StatusOK, result.Success(gin.H{
 		"id":         row.Id,

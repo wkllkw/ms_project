@@ -28,7 +28,7 @@ func CanOperateProject(c *gin.Context, projectCode string) (int64, bool) {
 	if err != nil || projectId == 0 {
 		return 0, false
 	}
-	db := gorms.GetDB()
+	db := getDB(c)
 	if !IsProjectMember(db, memberId, projectId) {
 		return projectId, false
 	}
@@ -48,13 +48,21 @@ func CanManageProject(c *gin.Context, projectCode string) (int64, bool) {
 	return projectId, true
 }
 
+// getDB 优先取 Gin context 中注入的测试 DB，否则用生产 DB
+func getDB(c *gin.Context) *gorm.DB {
+	if db, ok := c.Keys["test_db"].(*gorm.DB); ok && db != nil {
+		return db
+	}
+	return gorms.GetDB()
+}
+
 func CanOperateTask(c *gin.Context, taskCode string) (int64, int64, bool) {
 	memberId := c.GetInt64("memberId")
 	taskId, err := codecs.DecryptInt64(taskCode)
 	if err != nil || taskId == 0 {
 		return 0, 0, false
 	}
-	db := gorms.GetDB()
+	db := getDB(c)
 	var row struct {
 		ProjectCode int64 `gorm:"column:project_code"`
 	}

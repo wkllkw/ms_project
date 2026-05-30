@@ -44,11 +44,13 @@ type LoginRsp struct {
 	OrganizationList []OrganizationList `json:"organizationList"`
 }
 type Member struct {
+	Id               int64  `json:"id"`
 	Name             string `json:"name"`
 	Mobile           string `json:"mobile"`
 	Status           int    `json:"status"`
 	Code             string `json:"code"`
 	Email            string `json:"email"`
+	Avatar           string `json:"avatar"`
 	CreateTime       string `json:"create_time"`
 	LastLoginTime    string `json:"last_login_time"`
 	OrganizationCode string `json:"organization_code"`

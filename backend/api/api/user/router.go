@@ -31,6 +31,8 @@ func (*RouterUser) Route(r *gin.Engine) {
 	// 需要认证的路由
 	authGroup := r.Group("/project")
 	authGroup.Use(midd.TokenVerify())
+	authGroup.POST("/login/_checkLogin", h._checkLogin)
+	authGroup.POST("/login/_currentMember", h._currentMember)
 	authGroup.POST("/login/_bindMobile", h.bindMobile)
 	authGroup.POST("/login/_bindMail", h.bindMail)
 	authGroup.POST("/login/_unbindDingtalk", h.unbindDingtalk)

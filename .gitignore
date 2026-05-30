@@ -71,6 +71,7 @@ deploy/
 
 # Go compiled binaries
 backend/**/api-server
+backend/api/server
 backend/**/api_bin
 backend/**/project-api
 backend/**/ms-project-api

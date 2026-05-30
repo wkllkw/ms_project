@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -145,13 +146,15 @@ func (u *HandlerUser) loginByMobile(c *gin.Context, result *common.Result, req *
 	// 2. 查找用户
 	db := gorms.GetDB()
 	var mem struct {
-		Id       int64  `gorm:"column:id"`
-		Account  string `gorm:"column:account"`
-		Name     string `gorm:"column:name"`
-		Mobile   string `gorm:"column:mobile"`
-		Email    string `gorm:"column:email"`
-		Status   int    `gorm:"column:status"`
-		CreateTime int64 `gorm:"column:create_time"`
+		Id           int64  `gorm:"column:id"`
+		Account      string `gorm:"column:account"`
+		Name         string `gorm:"column:name"`
+		Mobile       string `gorm:"column:mobile"`
+		Email        string `gorm:"column:email"`
+		Avatar       string `gorm:"column:avatar"`
+		Status       int    `gorm:"column:status"`
+		CreateTime   int64  `gorm:"column:create_time"`
+		LastLoginTime int64 `gorm:"column:last_login_time"`
 	}
 	if err := db.Table("ms_member").Where("mobile = ?", req.Mobile).First(&mem).Error; err != nil {
 		c.JSON(http.StatusOK, result.Fail(http.StatusBadRequest, "手机号未注册"))
@@ -199,12 +202,15 @@ func (u *HandlerUser) loginByMobile(c *gin.Context, result *common.Result, req *
 	// 8. 返回
 	rsp := &user.LoginRsp{
 		Member: user.Member{
+			Id:               mem.Id,
 			Name:             mem.Name,
 			Mobile:           mem.Mobile,
 			Status:           mem.Status,
 			Code:             memCode,
 			Email:            mem.Email,
+			Avatar:           mem.Avatar,
 			CreateTime:       tms.FormatByMill(mem.CreateTime),
+			LastLoginTime:    tms.FormatByMill(mem.LastLoginTime),
 			OrganizationCode: orgCode,
 		},
 		TokenList: user.TokenList{
@@ -445,4 +451,139 @@ func (u *HandlerUser) resetPasswordByMail(c *gin.Context) {
 	// 删除已使用的验证码
 	_ = cache.Del(redisKey)
 	c.JSON(http.StatusOK, result.Success(nil))
+}
+
+// _checkLogin 检查登录状态，返回用户信息和Token
+func (u *HandlerUser) _checkLogin(c *gin.Context) {
+	result := &common.Result{}
+	memberId := c.GetInt64("memberId")
+	db := gorms.GetDB()
+
+	var mem struct {
+		Id            int64  `gorm:"column:id"`
+		Account       string `gorm:"column:account"`
+		Name          string `gorm:"column:name"`
+		Mobile        string `gorm:"column:mobile"`
+		Email         string `gorm:"column:email"`
+		Avatar        string `gorm:"column:avatar"`
+		Status        int    `gorm:"column:status"`
+		CreateTime    int64  `gorm:"column:create_time"`
+		LastLoginTime int64  `gorm:"column:last_login_time"`
+	}
+	if err := db.Table("ms_member").Where("id = ?", memberId).First(&mem).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(401, "用户不存在"))
+		return
+	}
+
+	memCode, _ := encrypts.EncryptInt64(mem.Id, "sdfgyrhgbxcdgryfhgywertd")
+
+	// 查询组织列表
+	var orgs []struct {
+		Id         int64  `gorm:"column:id"`
+		Name       string `gorm:"column:name"`
+		Avatar     string `gorm:"column:avatar"`
+		CreateTime int64  `gorm:"column:create_time"`
+		Personal   int32  `gorm:"column:personal"`
+	}
+	db.Table("ms_organization o").
+		Joins("JOIN ms_member_account ma ON ma.organization_code = o.id").
+		Where("ma.member_code = ?", mem.Id).
+		Select("o.id, o.name, o.avatar, o.create_time, o.personal").
+		Find(&orgs)
+
+	var orgCode string
+	orgList := make([]user.OrganizationList, 0, len(orgs))
+	for _, o := range orgs {
+		oCode, _ := encrypts.EncryptInt64(o.Id, "sdfgyrhgbxcdgryfhgywertd")
+		if orgCode == "" {
+			orgCode = oCode
+		}
+		orgList = append(orgList, user.OrganizationList{
+			Name:       o.Name,
+			Avatar:     o.Avatar,
+			OwnerCode:  memCode,
+			CreateTime: tms.FormatByMill(o.CreateTime),
+			Personal:   o.Personal,
+			Code:       oCode,
+		})
+	}
+
+	// 复用现有Token
+	accessToken := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+	accessToken = strings.TrimPrefix(accessToken, "bearer ")
+
+	rsp := &user.LoginRsp{
+		Member: user.Member{
+			Id:               mem.Id,
+			Name:             mem.Name,
+			Mobile:           mem.Mobile,
+			Status:           mem.Status,
+			Code:             memCode,
+			Email:            mem.Email,
+			Avatar:           mem.Avatar,
+			CreateTime:       tms.FormatByMill(mem.CreateTime),
+			LastLoginTime:    tms.FormatByMill(mem.LastLoginTime),
+			OrganizationCode: orgCode,
+		},
+		TokenList: user.TokenList{
+			AccessToken:    accessToken,
+			RefreshToken:   "",
+			TokenType:      "bearer",
+			AccessTokenExp: time.Now().Add(7 * 24 * time.Hour).Unix(),
+		},
+		OrganizationList: orgList,
+	}
+	c.JSON(http.StatusOK, result.Success(rsp))
+}
+
+// _currentMember 获取当前登录用户信息
+func (u *HandlerUser) _currentMember(c *gin.Context) {
+	result := &common.Result{}
+	memberId := c.GetInt64("memberId")
+	db := gorms.GetDB()
+
+	var mem struct {
+		Id            int64  `gorm:"column:id"`
+		Name          string `gorm:"column:name"`
+		Mobile        string `gorm:"column:mobile"`
+		Email         string `gorm:"column:email"`
+		Avatar        string `gorm:"column:avatar"`
+		Status        int    `gorm:"column:status"`
+		CreateTime    int64  `gorm:"column:create_time"`
+		LastLoginTime int64  `gorm:"column:last_login_time"`
+	}
+	if err := db.Table("ms_member").Where("id = ?", memberId).First(&mem).Error; err != nil {
+		c.JSON(http.StatusOK, result.Fail(401, "用户不存在"))
+		return
+	}
+
+	memCode, _ := encrypts.EncryptInt64(mem.Id, "sdfgyrhgbxcdgryfhgywertd")
+
+	// 获取当前组织code
+	var orgCode string
+	var org struct {
+		Id int64 `gorm:"column:id"`
+	}
+	err := db.Table("ms_organization o").
+		Joins("JOIN ms_member_account ma ON ma.organization_code = o.id").
+		Where("ma.member_code = ?", mem.Id).
+		Select("o.id").
+		First(&org).Error
+	if err == nil {
+		orgCode, _ = encrypts.EncryptInt64(org.Id, "sdfgyrhgbxcdgryfhgywertd")
+	}
+
+	memberInfo := user.Member{
+		Id:               mem.Id,
+		Name:             mem.Name,
+		Mobile:           mem.Mobile,
+		Status:           mem.Status,
+		Code:             memCode,
+		Email:            mem.Email,
+		Avatar:           mem.Avatar,
+		CreateTime:       tms.FormatByMill(mem.CreateTime),
+		LastLoginTime:    tms.FormatByMill(mem.LastLoginTime),
+		OrganizationCode: orgCode,
+	}
+	c.JSON(http.StatusOK, result.Success(memberInfo))
 }
